@@ -1,49 +1,39 @@
 import os
-from PyQt5.QtWidgets import QWidget, QMessageBox
+from PyQt5.QtWidgets import QDialog, QMessageBox # Cambiamos QWidget por QDialog
 from PyQt5 import uic
-from PyQt5.QtCore import pyqtSignal
 from src.managers.auth_manager import AuthManager
-
-class LoginWindow(QWidget):
-    # Señal personalizada: Avisa al Main.py de que el login fue exitoso
-    login_exitoso = pyqtSignal()
-    
+"""
+Clase que maneja la ventana de login, llama a los metodos de AuthManager para autenticar la operacion de
+logear y registrar a los usuarios en la base de datos de Supabase
+"""
+class LoginDialog(QDialog): # Hereda de QDialog
     def __init__(self):
         super().__init__()
-        uic.loadUi("src/ui/auth.ui", self)
+        # Cargar UI (Asegúrate de que tu auth.ui sea un QDialog o QWidget, ambos funcionan aquí)
+        ui_path = os.path.join(os.path.dirname(__file__), "..", "ui", "auth.ui")
+        uic.loadUi(ui_path, self)
+
         self.auth_manager = AuthManager()
-        self.setup_ui()
-    
-    def setup_ui(self):
-        self.btn_login_action.clicked.connect(self.handle_login)
-        self.btn_go_to_register.clicked.connect(self.handle_register)
-    
-    def handle_login(self):
+        self.rol_usuario = None # Aquí guardaremos el rol para que el Main lo recoja
+        self.usuario_actual = None
+
+        self.btn_go_to_register.hide()
+        self.stackedWidget.setCurrentIndex(0) # Mostrar pantalla de login por defecto
+        self.btn_login.clicked.connect(self.login)
+
+    def login(self):
         email = self.input_login_email.text()
         password = self.input_login_pass.text()
-        try:
-            response = self.auth_manager.iniciar_sesion(email, password)
-            if response.get("user"):
-                self.login_exitoso.emit()
-            else:
-                QMessageBox.warning(self, "Error", "Credenciales incorrectas")
-        except Exception as e:
-            QMessageBox.warning(self, "Error", str(e))
-        
-    def handle_register(self):
-        nombre = self.input_reg_nombre.text()
-        email = self.input_reg_email.text()
-        password = self.input_reg_pass.text()
 
-        if not nombre or not email or not password:
-            QMessageBox.warning(self, "Error", "Todos los campos son obligatorios")
+        # Manejo de errores
+        if not email or not password:
+            QMessageBox.critical(self, "Error", "Debes completar todos los campos")
             return
-        
-        try:
-            response = self.auth_manager.registrar_usuario(email, password)
-            if response.get("user"):
-                self.login_exitoso.emit()
-            else:
-                QMessageBox.warning(self, "Error", "Error al registrar el usuario")
-        except Exception as e:
-            QMessageBox.warning(self, "Error", str(e))
+
+        user = self.auth_manager.login(email, password)
+        if user:
+            self.user = user # Guardamos el usuario para pasarlo al main
+            # VERIFICACION FINAL: accept() cierra la ventana y devuelve True (Accepted)
+            self.accept() 
+        else:
+            QMessageBox.critical(self, "Error", "Credenciales incorrectas")

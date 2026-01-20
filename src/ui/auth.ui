@@ -68,7 +68,6 @@ QLabel#Logo, QLabel#Logo_2 {
      <property name="currentIndex">
       <number>0</number>
      </property>
-     
      <widget class="QWidget" name="page_login">
       <layout class="QVBoxLayout" name="verticalLayout_2">
        <property name="spacing">
@@ -111,14 +110,14 @@ QLabel#Logo, QLabel#Logo_2 {
        </item>
        <item>
         <widget class="QLabel" name="label">
+         <property name="styleSheet">
+          <string>font-size: 20px; font-weight: bold; margin-bottom: 20px;</string>
+         </property>
          <property name="text">
           <string>Iniciar Sesión</string>
          </property>
          <property name="alignment">
           <set>Qt::AlignCenter</set>
-         </property>
-         <property name="styleSheet">
-             <string>font-size: 20px; font-weight: bold; margin-bottom: 20px;</string>
          </property>
         </widget>
        </item>
@@ -140,12 +139,12 @@ QLabel#Logo, QLabel#Logo_2 {
         </widget>
        </item>
        <item>
-        <widget class="QPushButton" name="btn_login_action">
-         <property name="text">
-          <string>ENTRAR</string>
-         </property>
+        <widget class="QPushButton" name="btn_login">
          <property name="cursor">
           <cursorShape>PointingHandCursor</cursorShape>
+         </property>
+         <property name="text">
+          <string>ENTRAR</string>
          </property>
          <property name="class" stdset="0">
           <string>btn-primary</string>
@@ -154,11 +153,11 @@ QLabel#Logo, QLabel#Logo_2 {
        </item>
        <item>
         <widget class="QPushButton" name="btn_go_to_register">
-         <property name="text">
-          <string>¿No tienes cuenta? Regístrate</string>
-         </property>
          <property name="cursor">
           <cursorShape>PointingHandCursor</cursorShape>
+         </property>
+         <property name="text">
+          <string>¿No tienes cuenta? Regístrate</string>
          </property>
          <property name="class" stdset="0">
           <string>btn-link</string>
@@ -180,7 +179,6 @@ QLabel#Logo, QLabel#Logo_2 {
        </item>
       </layout>
      </widget>
-
      <widget class="QWidget" name="page_register">
       <layout class="QVBoxLayout" name="verticalLayout_3">
        <property name="spacing">
@@ -223,14 +221,14 @@ QLabel#Logo, QLabel#Logo_2 {
        </item>
        <item>
         <widget class="QLabel" name="label_2">
+         <property name="styleSheet">
+          <string>font-size: 20px; font-weight: bold; margin-bottom: 20px;</string>
+         </property>
          <property name="text">
           <string>Crear Cuenta</string>
          </property>
          <property name="alignment">
           <set>Qt::AlignCenter</set>
-         </property>
-         <property name="styleSheet">
-             <string>font-size: 20px; font-weight: bold; margin-bottom: 20px;</string>
          </property>
         </widget>
        </item>
@@ -260,11 +258,11 @@ QLabel#Logo, QLabel#Logo_2 {
        </item>
        <item>
         <widget class="QPushButton" name="btn_register_action">
-         <property name="text">
-          <string>REGISTRARSE</string>
-         </property>
          <property name="cursor">
           <cursorShape>PointingHandCursor</cursorShape>
+         </property>
+         <property name="text">
+          <string>REGISTRARSE</string>
          </property>
          <property name="class" stdset="0">
           <string>btn-primary</string>
@@ -273,11 +271,11 @@ QLabel#Logo, QLabel#Logo_2 {
        </item>
        <item>
         <widget class="QPushButton" name="btn_go_to_login">
-         <property name="text">
-          <string>Volver a Inicio de Sesión</string>
-         </property>
          <property name="cursor">
           <cursorShape>PointingHandCursor</cursorShape>
+         </property>
+         <property name="text">
+          <string>Volver a Inicio de Sesión</string>
          </property>
          <property name="class" stdset="0">
           <string>btn-link</string>

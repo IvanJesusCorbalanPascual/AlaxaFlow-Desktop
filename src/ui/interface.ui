@@ -109,8 +109,63 @@ QWidget#scrollContents_revision, QWidget#scrollContents_finalizado {
       <layout class="QHBoxLayout" name="horizontalLayout">
        <item>
         <widget class="QLabel" name="HeaderTitle">
+         <property name="styleSheet">
+          <string notr="true">color:white;
+font-size:20px;</string>
+         </property>
          <property name="text">
           <string>AlaxaFlow</string>
+         </property>
+        </widget>
+       </item>
+       <item>
+        <spacer name="horizontalSpacer_2">
+         <property name="orientation">
+          <enum>Qt::Horizontal</enum>
+         </property>
+         <property name="sizeHint" stdset="0">
+          <size>
+           <width>40</width>
+           <height>20</height>
+          </size>
+         </property>
+        </spacer>
+       </item>
+       <item>
+        <widget class="QLabel" name="label">
+         <property name="font">
+          <font>
+           <family>Segoe UI</family>
+           <pointsize>-1</pointsize>
+           <weight>75</weight>
+           <bold>true</bold>
+          </font>
+         </property>
+         <property name="styleSheet">
+          <string notr="true">color:white;
+font-size:20px;</string>
+         </property>
+         <property name="text">
+          <string>Tablero Actual:</string>
+         </property>
+        </widget>
+       </item>
+       <item>
+        <widget class="QLabel" name="lblTableroActual">
+         <property name="font">
+          <font>
+           <family>Segoe UI</family>
+           <pointsize>-1</pointsize>
+           <weight>75</weight>
+           <bold>true</bold>
+          </font>
+         </property>
+         <property name="styleSheet">
+          <string notr="true">color:white;
+font-size:20px;</string>
+         </property>
+         <property name="text">
+          <string>Ejemplo</string>
          </property>
         </widget>
        </item>
@@ -128,9 +183,12 @@ QWidget#scrollContents_revision, QWidget#scrollContents_finalizado {
         </spacer>
        </item>
        <item>
-        <widget class="QPushButton" name="btnLogout">
+        <widget class="QPushButton" name="btn_logout">
          <property name="cursor">
           <cursorShape>PointingHandCursor</cursorShape>
+         </property>
+         <property name="styleSheet">
+          <string notr="true">color:white;</string>
          </property>
          <property name="text">
           <string>Cerrar Sesión</string>
@@ -163,6 +221,14 @@ QWidget#scrollContents_revision, QWidget#scrollContents_finalizado {
          <layout class="QVBoxLayout" name="verticalLayout_2">
           <item>
            <widget class="QLabel" name="label_1">
+            <property name="font">
+             <font>
+              <family>Segoe UI</family>
+              <pointsize>-1</pointsize>
+              <weight>75</weight>
+              <bold>true</bold>
+             </font>
+            </property>
             <property name="text">
              <string>PENDIENTE</string>
             </property>
@@ -204,6 +270,9 @@ QWidget#scrollContents_revision, QWidget#scrollContents_finalizado {
          <layout class="QVBoxLayout" name="verticalLayout_3">
           <item>
            <widget class="QLabel" name="label_2">
+            <property name="styleSheet">
+             <string notr="true"/>
+            </property>
             <property name="text">
              <string>EN PROCESO</string>
             </property>
