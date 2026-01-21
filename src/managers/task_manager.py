@@ -103,3 +103,13 @@ class TaskManager:
         except Exception as e:
             print(f"Error eliminar: {e}")
             return False
+        
+    def editar_tarea(self, id_tarea, nuevo_titulo):
+        try:
+            db.client.table('tareas').update({
+                "titulo": nuevo_titulo
+            }).eq('id', id_tarea).execute()
+            return True
+        except Exception as e:
+            print(f"Error editar tarea: {e}")
+            return False    

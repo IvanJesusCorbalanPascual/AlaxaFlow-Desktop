@@ -6,6 +6,44 @@ from src.managers.task_manager import TaskManager
 from src.managers.auth_manager import AuthManager
 from src.views.widgets import KanbanColumn, KanbanCard
 
+# Estilo "Alaxa Brown"
+ESTILO_NORMAL = """
+QMainWindow { background-color: #FAFAFA; }
+QWidget { font-family: 'Segoe UI', sans-serif; font-size: 14px; color: #3E2723; }
+QFrame#TopBar { background-color: #4E342E; border-bottom: 3px solid #FFB74D; }
+QLabel#HeaderTitle { color: #FFFFFF; font-weight: bold; font-size: 20px; }
+QPushButton { border-radius: 4px; padding: 5px 15px; }
+/* Columnas */
+QFrame#col_pendiente, QFrame#col_proceso, QFrame#col_revision, QFrame#col_finalizado {
+    background-color: #EFF1F3; border: 1px solid #D7CCC8; border-radius: 8px;
+}
+/* Tarjetas (KanbanCard) */
+QPushButton[class="tarjeta"] {
+    background-color: #FFFFFF; color: #3E2723; border: 1px solid #E0E0E0;
+}
+QPushButton[class="tarjeta"]:hover { background-color: #FFF8E1; border: 1px solid #FFB74D; }
+"""
+
+# Estilo alto contraste para mejor accesibilidad
+ESTILO_CONTRASTE = """
+QMainWindow { background-color: #000000; }
+QWidget { font-family: 'Verdana', sans-serif; font-size: 16px; color: #FFFFFF; font-weight: bold; }
+QFrame#TopBar { background-color: #000000; border-bottom: 4px solid #FFFF00; }
+QLabel { color: #FFFF00; }
+QLabel#HeaderTitle { color: #FFFF00; font-size: 24px; text-decoration: underline; }
+QPushButton { background-color: #000000; color: #FFFF00; border: 2px solid #FFFF00; border-radius: 0px; }
+QPushButton:hover { background-color: #FFFF00; color: #000000; }
+/* Columnas */
+QFrame#col_pendiente, QFrame#col_proceso, QFrame#col_revision, QFrame#col_finalizado {
+    background-color: #000000; border: 3px solid #FFFFFF; border-radius: 0px;
+}
+/* Tarjetas */
+QPushButton[class="tarjeta"] {
+    background-color: #000000; color: #FFFFFF; border: 2px solid #FFFFFF; margin-bottom: 10px;
+}
+QPushButton[class="tarjeta"]:hover { background-color: #333333; border: 2px dashed #FFFF00; }
+"""
+
 """
 Clase que maneja las pantallas de la interfaz gráfica principal (Ventana principal)
 """
@@ -19,6 +57,9 @@ class MainWindow(QMainWindow):
         self.rol = rol # Contiene 'admin', 'manager', 'trabajador', etc.
         self.task_manager = TaskManager()
         self.tablero_actual = None # Aqui es donde guardaremos el objeto tablero
+
+        # Aqui se guarda el estado del tema actual
+        self.tema_actual = "normal"
         
         self.configurar_ui()
         
@@ -29,7 +70,18 @@ class MainWindow(QMainWindow):
     def configurar_ui(self):
         self.btn_logout.clicked.connect(self.close)
         self.HeaderTitle.setText(f"AlaxaFlow - {self.rol.upper()}")
-        
+
+        # Botón para activar el modo alto contraste
+        self.btn_accesibilidad = QPushButton("👁️ Alto Contraste")
+        self.btn_accesibilidad.setCursor(Qt.PointingHandCursor)
+
+        # Estilo para que el botón destaque ligeramente
+        self.btn_accesibilidad.setStyleSheet("background-color: #FFB74D; color: #3E2723; font-weight: bold; border: none;")
+        self.btn_accesibilidad.clicked.connect(self.alternar_tema)
+
+        # Inserta el botón en la parte superior a la izquierda de cerrar sesión
+        self.TopBar.layout().insertWidget(3, self.btn_accesibilidad)
+
         # Botón Admin (Solo para admin y manager)
         if self.rol in ['admin', 'manager']:
             self.btn_add_user = QPushButton("Crear Usuario ")
@@ -39,6 +91,20 @@ class MainWindow(QMainWindow):
             self.TopBar.layout().insertWidget(2, self.btn_add_user)
 
         self.tablero_layout = self.contentArea.layout()
+
+    def alternar_tema(self):
+        if self.tema_actual == "normal":
+            # Cambia al estilo de Alto Contraste
+            self.setStyleSheet(ESTILO_CONTRASTE)
+            self.tema_actual = "contraste"
+            self.btn_accesibilidad.setText("🎨 Estilo Normal")
+            self.btn_accesibilidad.setStyleSheet("background-color: #FFFF00; color: #000000; border: 2px solid white;")
+        else:
+            # Vuelve al estilo normal 
+            self.setStyleSheet(ESTILO_NORMAL)
+            self.tema_actual = "normal"
+            self.btn_accesibilidad.setText("👁️ Alto Contraste")
+            self.btn_accesibilidad.setStyleSheet("background-color: #FFB74D; color: #3E2723; font-weight: bold; border: none;")
 
     def inicializar_datos(self):
         # Obtiene o crea el tablero
