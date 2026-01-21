@@ -5,6 +5,24 @@ from PyQt5.QtWidgets import (QPushButton, QFrame, QVBoxLayout, QLabel,
 from PyQt5.QtCore import Qt, QMimeData, pyqtSignal
 from PyQt5.QtGui import QDrag, QColor, QPixmap, QCursor
 
+ESTILO_CARD_NORMAL = """
+    QPushButton {
+        background-color: #FFFFFF; color: #3E2723;
+        border: 1px solid #E0E0E0; border-radius: 6px;
+        padding: 15px; text-align: left; font-size: 14px; margin-bottom: 5px;
+    }
+    QPushButton:hover { background-color: #FFF8E1; border: 1px solid #FFB74D; }
+"""
+
+ESTILO_CARD_CONTRASTE = """
+    QPushButton {
+        background-color: #000000; color: #FFFF00;
+        border: 2px solid #FFFFFF; border-radius: 0px;
+        padding: 15px; text-align: left; font-size: 16px; font-weight: bold; margin-bottom: 10px;
+    }
+    QPushButton:hover { background-color: #333333; border: 2px dashed #FFFF00; }
+"""
+
 """
 Clase para el diálogo de edición de tareas, contiene la logica para editar y borrar tareas
 """
@@ -73,14 +91,7 @@ class KanbanCard(QPushButton):
         self.clicked.connect(self.abrir_detalle)
 
         # Estilo
-        self.setStyleSheet("""
-            QPushButton {
-                background-color: #FFFFFF; color: #3E2723;
-                border: 1px solid #E0E0E0; border-radius: 6px;
-                padding: 15px; text-align: left; font-size: 14px; margin-bottom: 5px;
-            }
-            QPushButton:hover { background-color: #FFF8E1; border: 1px solid #FFB74D; }
-        """)
+        self.setStyleSheet(ESTILO_CARD_NORMAL)
         
         # Sombra
         shadow = QGraphicsDropShadowEffect()
@@ -89,6 +100,16 @@ class KanbanCard(QPushButton):
         shadow.setYOffset(2)
         shadow.setColor(QColor(0, 0, 0, 30))
         self.setGraphicsEffect(shadow)
+
+    # Cambia visualmente la tarjeta
+    def set_modo_visual(self, modo):
+        if modo == "contraste":
+            self.setStyleSheet(ESTILO_CARD_CONTRASTE)
+            # Quita la sombra para que sea más legible
+            self.setGraphicsEffect(None)
+        else:
+            # Restaura la sombra
+            self.setStyleSheet(ESTILO_CARD_NORMAL)
 
     # Lógica para abrir el diálogo al hacer clic
     def abrir_detalle(self):
@@ -141,7 +162,7 @@ class KanbanColumn(QFrame):
         
         header = QLabel(titulo)
         header.setObjectName("TituloColumna")
-        header.setStyleSheet("font-weight: bold; font-size: 16px; color: #4E342E; padding: 5px;")
+        header.setStyleSheet("")
         self.layout.addWidget(header)
         
         self.scroll = QScrollArea()
@@ -159,13 +180,7 @@ class KanbanColumn(QFrame):
 
         self.btn_add = QPushButton(" + Añadir tarjeta")
         self.btn_add.setCursor(Qt.PointingHandCursor)
-        self.btn_add.setStyleSheet("""
-            QPushButton {
-                background-color: transparent; color: #5D4037;
-                border-radius: 4px; padding: 8px; text-align: left;
-            }
-            QPushButton:hover { background-color: #D7CCC8; color: #3E2723; }
-        """)
+        self.btn_add.setObjectName("btn_add_card")
         self.btn_add.clicked.connect(self.crear_nueva_tarea)
         self.layout.addWidget(self.btn_add)
         self.setLayout(self.layout)

@@ -14,15 +14,43 @@ QWidget { font-family: 'Segoe UI', sans-serif; font-size: 14px; color: #3E2723; 
 QFrame#TopBar { background-color: #4E342E; border-bottom: 3px solid #FFB74D; }
 QLabel#HeaderTitle { color: #FFFFFF; font-weight: bold; font-size: 20px; }
 QPushButton { border-radius: 4px; padding: 5px 15px; }
-/* Columnas */
-QFrame#col_pendiente, QFrame#col_proceso, QFrame#col_revision, QFrame#col_finalizado {
-    background-color: #EFF1F3; border: 1px solid #D7CCC8; border-radius: 8px;
+
+/* --- COLUMNAS --- */
+/* Fondo gris claro y bordes suaves */
+QFrame#Columna {
+    background-color: #EFF1F3; 
+    border: 1px solid #D7CCC8; 
+    border-radius: 8px;
+    margin: 5px;
 }
+/* TÍTULO DE COLUMNA (Marrón Alaxa) */
+QLabel#TituloColumna {
+    font-weight: bold; 
+    font-size: 16px; 
+    color: #4E342E; 
+    padding: 5px;
+}
+
 /* Tarjetas (KanbanCard) */
 QPushButton[class="tarjeta"] {
     background-color: #FFFFFF; color: #3E2723; border: 1px solid #E0E0E0;
 }
 QPushButton[class="tarjeta"]:hover { background-color: #FFF8E1; border: 1px solid #FFB74D; }
+
+/* BOTÓN AÑADIR TARJETA (Modo Normal) */
+QPushButton#btn_add_card {
+    background-color: transparent; 
+    color: #5D4037;
+    border-radius: 4px; 
+    padding: 8px; 
+    text-align: left;
+    border: none;
+}
+
+QPushButton#btn_add_card:hover { 
+    background-color: #D7CCC8; 
+    color: #3E2723; 
+}
 """
 
 # Estilo alto contraste para mejor accesibilidad
@@ -40,9 +68,26 @@ QFrame#col_pendiente, QFrame#col_proceso, QFrame#col_revision, QFrame#col_finali
 }
 /* Tarjetas */
 QPushButton[class="tarjeta"] {
-    background-color: #000000; color: #FFFFFF; border: 2px solid #FFFFFF; margin-bottom: 10px;
+    background-color: #000000; 
+    color: #FFFF00; 
+    border: 2px solid #FFFF00; 
+    margin-bottom: 10px;
+    text-align: left;
 }
-QPushButton[class="tarjeta"]:hover { background-color: #333333; border: 2px dashed #FFFF00; }
+
+/* BOTÓN AÑADIR TARJETA (Modo Alto Contraste) */
+QPushButton#btn_add_card {
+    background-color: #000000;
+    color: #FFFF00; /* Amarillo */
+    border: 2px dashed #FFFF00; /* Borde discontinuo para resaltar */
+    text-align: center; /* Centrado se lee mejor aquí */
+    padding: 10px;
+    margin-top: 5px;
+}
+QPushButton#btn_add_card:hover {
+    background-color: #333333;
+    color: #FFFFFF;
+}
 """
 
 """
@@ -87,7 +132,7 @@ class MainWindow(QMainWindow):
         self.btn_accesibilidad.clicked.connect(self.alternar_tema)
 
         # Inserta el botón en la parte superior a la izquierda de cerrar sesión
-        self.TopBar.layout().insertWidget(3, self.btn_accesibilidad)
+        self.TopBar.layout().insertWidget(5, self.btn_accesibilidad)
 
         # Botón Admin (Solo para admin y manager)
         
@@ -129,6 +174,16 @@ class MainWindow(QMainWindow):
             self.tema_actual = "normal"
             self.btn_accesibilidad.setText("👁️ Alto Contraste")
             self.btn_accesibilidad.setStyleSheet("background-color: #FFB74D; color: #3E2723; font-weight: bold; border: none;")
+
+        # Actualiza el estilo de las tarjetas, recorriendo las columnas y layouts
+        if hasattr(self, 'cols_widgets'):
+            for col_widget in self.cols_widgets.values():
+                layout = col_widget.scroll_layout
+                for i in range(layout.count()):
+                    widget = layout.itemAt(i).widget()
+                    # Si el widget es una KanbanCard, le cambia el modo
+                    if widget and hasattr(widget, 'set_modo_visual'):
+                        widget.set_modo_visual(self.tema_actual)
 
     def inicializar_datos(self):
         # Obtiene o crea el tablero
