@@ -1,7 +1,8 @@
 import sys, os
-from PyQt5.QtWidgets import QApplication
+from PyQt5.QtWidgets import QApplication, QDialog
 from PyQt5.QtGui import QIcon
-from src.views.ventanas import MainWindow
+from src.views.main_window import MainWindow
+from src.views.login_window import LoginDialog
 
 STYLESHEET = """
 /* --- GENERAL --- */
@@ -77,22 +78,15 @@ class UsuarioDummy:
     def __init__(self, id, email):
         self.id = id
         self.email = email
-
+        
 if __name__ == "__main__":
     ruta_base = os.path.dirname(os.path.abspath(__file__))
     ruta_icono = os.path.join(ruta_base, "assets", "logoAlaxa.png")
+
     app = QApplication(sys.argv)
     app.setStyleSheet(STYLESHEET)
     app.setWindowIcon(QIcon(ruta_icono))
-
-    # Para poner el logo en la barra de tareas de Windows
-    try:
-        import ctypes
-        myappid = 'mycompany.myproduct.subproduct.version' # Un ID inventado cualquiera
-        ctypes.windll.shell32.SetCurrentProcessExplicitAppUserModelID(myappid)
-    except ImportError:
-        pass
-    
+   
     # --- CONFIGURACIÓN MANUAL para probar la aplicacion sin tener que logearse todo el rato (Bypasseando el Login) ---
     
     # Tu ID real de Supabase (Cópialo de la web si quieres ver tus tareas)

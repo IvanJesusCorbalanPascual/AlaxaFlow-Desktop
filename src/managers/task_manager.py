@@ -86,7 +86,7 @@ class TaskManager:
             db.client.table('tareas').update({
                 "columna_id": id_nueva_columna
             }).eq('id', id_tarea).execute()
-            print(f"Tarea {id_tarea} movida a columna {id_nueva_columna}")
+            print(f"Tarea {id_tarea} movida a columna {id_nueva_columna}")  
             return True
         except Exception as e:
             print(f"Error mover tarea: {e}")
@@ -102,4 +102,49 @@ class TaskManager:
             return True
         except Exception as e:
             print(f"Error eliminar: {e}")
+            return False
+
+    # --- Gestion de usuarios y tableros por Admin ---
+
+    def obtener_todos_usuarios(self):
+        try:
+            # Traemos todos los perfiles de la base de datos
+            response = db.client.table('perfiles').select('*').execute()
+            return response.data
+        except Exception as e:
+            print(f"Error listando usuarios: {e}")
+            return []
+
+    def obtener_todos_tableros(self):
+        try:
+            # Traemos todos los tableros
+            response = db.client.table('tableros').select('*').execute()
+            return response.data
+        except Exception as e:
+            print(f"Error listando tableros: {e}")
+            return []
+
+    def crear_tablero_admin(self, titulo, descripcion, id_owner):
+        # Crear tablero asignado a un usuario específico (Lógica de Admin)
+        try:
+            data = {
+                "titulo": titulo, 
+                "descripcion": descripcion, 
+                "creado_por": id_owner
+            }
+            res = db.client.table('tableros').insert(data).execute()
+            
+            if res.data:
+                # Crear columnas por defecto automáticamente
+                tid = res.data[0]['id']
+                cols = [
+                    {"tablero_id": tid, "titulo": "PENDIENTE", "posicion": 1},
+                    {"tablero_id": tid, "titulo": "EN PROCESO", "posicion": 2},
+                    {"tablero_id": tid, "titulo": "FINALIZADO", "posicion": 3}
+                ]
+                db.client.table('columnas').insert(cols).execute()
+                return True
+            return False
+        except Exception as e:
+            print(f"Error creando tablero admin: {e}")
             return False
