@@ -55,18 +55,84 @@ QPushButton#btn_add_card:hover {
 
 # Estilo alto contraste para mejor accesibilidad
 ESTILO_CONTRASTE = """
-QMainWindow { background-color: #000000; }
-QWidget { font-family: 'Verdana', sans-serif; font-size: 16px; color: #FFFFFF; font-weight: bold; }
-QFrame#TopBar { background-color: #000000; border-bottom: 4px solid #FFFF00; }
-QLabel { color: #FFFF00; }
-QLabel#HeaderTitle { color: #FFFF00; font-size: 24px; text-decoration: underline; }
-QPushButton { background-color: #000000; color: #FFFF00; border: 2px solid #FFFF00; border-radius: 0px; }
-QPushButton:hover { background-color: #FFFF00; color: #000000; }
-/* Columnas */
-QFrame#col_pendiente, QFrame#col_proceso, QFrame#col_revision, QFrame#col_finalizado {
-    background-color: #000000; border: 3px solid #FFFFFF; border-radius: 0px;
+/* --- GENERAL --- */
+QMainWindow, QDialog { 
+    background-color: #000000; 
 }
-/* Tarjetas */
+QWidget { 
+    font-family: 'Verdana', sans-serif; 
+    font-size: 14px; 
+    color: #FFFF00; /* Por defecto todo Amarillo */
+    font-weight: bold; 
+}
+
+/* --- HEADER SUPERIOR --- */
+QFrame#TopBar { 
+    background-color: #000000; 
+    border-bottom: 4px solid #FFFF00; 
+}
+QLabel#HeaderTitle { 
+    color: #FFFF00; 
+    font-size: 22px; 
+    text-decoration: underline; 
+}
+
+/* --- BOTONES DEL HEADER (Cerrar sesión, Panel, etc) --- */
+QPushButton { 
+    background-color: #000000; 
+    color: #FFFF00; 
+    border: 2px solid #FFFF00; 
+    border-radius: 0px; 
+    padding: 8px;
+}
+QPushButton:hover { 
+    background-color: #FFFF00; 
+    color: #000000; 
+}
+
+/* --- COLUMNAS (Cajas grandes) --- */
+QFrame#Columna {
+    background-color: #000000; 
+    border: 2px solid #FFFFFF; /* Borde BLANCO para separar columnas */
+    border-radius: 0px;
+    margin: 2px;
+}
+
+/* --- TÍTULOS DE LAS COLUMNAS (PENDIENTE, ETC.) --- */
+/* ¡AQUÍ ESTABA EL FALLO! Forzamos blanco y quitamos el marrón */
+QLabel#TituloColumna {
+    color: #FFFFFF; 
+    font-size: 18px;
+    background-color: #000000;
+    padding: 10px;
+    border-bottom: 2px solid #333; /* Separador sutil */
+}
+
+/* --- ÁREA DE SCROLL (FONDO) --- */
+QScrollArea {
+    background-color: #000000;
+    border: none;
+}
+QWidget {
+    background-color: #000000; 
+}
+
+/* --- BOTÓN "+ AÑADIR TARJETA" (Al pie de la columna) --- */
+/* Lo hacemos resaltar mucho más */
+QFrame#Columna QPushButton {
+    background-color: #000000;
+    color: #FFFF00; /* Texto Amarillo */
+    border: 2px dashed #FFFF00; /* Borde discontinuo "técnico" */
+    text-align: center;
+    padding: 10px;
+    margin-top: 5px;
+}
+QFrame#Columna QPushButton:hover {
+    background-color: #333333; /* Gris oscuro al pasar el ratón */
+    color: #FFFFFF;
+}
+
+/* --- TARJETAS (KanbanCard) --- */
 QPushButton[class="tarjeta"] {
     background-color: #000000; 
     color: #FFFF00; 
