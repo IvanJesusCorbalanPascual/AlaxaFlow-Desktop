@@ -5,6 +5,7 @@ from PyQt5.QtCore import Qt
 from src.managers.task_manager import TaskManager
 from src.managers.auth_manager import AuthManager
 from src.views.widgets import KanbanColumn, KanbanCard
+from src.views.admin_panel import AdminWindow
 
 # Estilo "Alaxa Brown"
 ESTILO_NORMAL = """
@@ -54,7 +55,12 @@ class MainWindow(QMainWindow):
         uic.loadUi(ui_path, self)
         
         self.usuario = usuario
-        self.rol = rol # Contiene 'admin', 'manager', 'trabajador', etc.
+        if rol:
+            self.rol = rol # Contiene 'admin', 'manager', 'trabajador', etc.
+        else:
+            print("AVISO: El usuario no tiene rol asignado en la BD. Usando rol 'trabajador'.")
+            self.rol = 'trabajador' # Por defecto si no se pasa nada
+            
         self.task_manager = TaskManager()
         self.tablero_actual = None # Aqui es donde guardaremos el objeto tablero
 
@@ -68,6 +74,7 @@ class MainWindow(QMainWindow):
             self.inicializar_datos()
 
     def configurar_ui(self):
+        # 1. Configuración básica (Logout y Título)
         self.btn_logout.clicked.connect(self.close)
         self.HeaderTitle.setText(f"AlaxaFlow - {self.rol.upper()}")
 
@@ -83,12 +90,29 @@ class MainWindow(QMainWindow):
         self.TopBar.layout().insertWidget(3, self.btn_accesibilidad)
 
         # Botón Admin (Solo para admin y manager)
+        
+        # 2. LOGICA NUEVA: Botón del Panel de Admin
+        # Sustituimos el antiguo botón "Crear Usuario" por el botón "Panel Control"
         if self.rol in ['admin', 'manager']:
-            self.btn_add_user = QPushButton("Crear Usuario ")
-            self.btn_add_user.setStyleSheet("background-color: #8D6E63; color: white; font-weight: bold; border: none; padding: 5px; margin-right: 20px;")
-            self.btn_add_user.setCursor(Qt.PointingHandCursor)
-            self.btn_add_user.clicked.connect(self.abrir_registro_admin)
-            self.TopBar.layout().insertWidget(2, self.btn_add_user)
+            self.btn_admin_panel = QPushButton(" 🛠️ Panel Control ")
+            self.btn_admin_panel.setCursor(Qt.PointingHandCursor)
+            
+            # Le damos un estilo oscuro para diferenciarlo
+            self.btn_admin_panel.setStyleSheet("""
+                background-color: #263238; 
+                color: white; 
+                font-weight: bold; 
+                border: 1px solid #455A64; 
+                border-radius: 4px; 
+                padding: 6px 12px; 
+                margin-right: 15px;
+            """)
+            
+            # Conectamos con la función que abre la ventana nueva
+            self.btn_admin_panel.clicked.connect(self.abrir_panel_admin)
+            
+            # Lo ponemos a la izquierda del todo (índice 0) o donde estaba el otro
+            self.TopBar.layout().insertWidget(0, self.btn_admin_panel)
 
         self.tablero_layout = self.contentArea.layout()
 
@@ -203,3 +227,8 @@ class MainWindow(QMainWindow):
             QMessageBox.information(self, "Éxito", "Usuario registrado correctamente.")
         else:
             QMessageBox.critical(self, "Error", "Fallo al registrar en Supabase.")
+
+    def abrir_panel_admin(self):
+        self.admin_window = AdminWindow(self.usuario, parent_window=self)
+        self.admin_window.show()
+        self.hide()
