@@ -66,7 +66,7 @@ QLabel#Logo, QLabel#Logo_2 {
    <item>
     <widget class="QStackedWidget" name="stackedWidget">
      <property name="currentIndex">
-      <number>0</number>
+      <number>1</number>
      </property>
      <widget class="QWidget" name="page_login">
       <layout class="QVBoxLayout" name="verticalLayout_2">
@@ -240,6 +240,13 @@ QLabel#Logo, QLabel#Logo_2 {
         </widget>
        </item>
        <item>
+        <widget class="QLineEdit" name="input_reg_apellidos">
+         <property name="placeholderText">
+          <string>Apellidos</string>
+         </property>
+        </widget>
+       </item>
+       <item>
         <widget class="QLineEdit" name="input_reg_email">
          <property name="placeholderText">
           <string>Correo Electrónico</string>
@@ -255,6 +262,9 @@ QLabel#Logo, QLabel#Logo_2 {
           <string>Contraseña</string>
          </property>
         </widget>
+       </item>
+       <item>
+        <widget class="QComboBox" name="combo_reg_departamento"/>
        </item>
        <item>
         <widget class="QPushButton" name="btn_register_action">

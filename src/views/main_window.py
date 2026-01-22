@@ -52,6 +52,30 @@ QPushButton#btn_add_card:hover {
     background-color: #D7CCC8; 
     color: #3E2723; 
 }
+
+QPushButton#btn_add_column {
+    background-color: transparent; 
+    color: #FFFFFF; 
+    border: 1px solid #D7CCC8; 
+    padding: 6px; 
+    border-radius: 4px;
+}
+QPushButton#btn_add_column:hover {
+    background-color: #5D4037;
+}
+
+QPushButton#btn_admin_panel {
+    background-color: #263238; 
+    color: white; 
+    font-weight: bold; 
+    border: 1px solid #455A64; 
+    border-radius: 4px; 
+    padding: 6px 12px; 
+    margin-right: 15px;
+}
+QPushButton#btn_admin_panel:hover {
+    background-color: #37474F;
+}
 """
 
 # Estilo alto contraste para mejor accesibilidad

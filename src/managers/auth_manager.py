@@ -26,19 +26,22 @@ class AuthManager:
             print(f"Error Login: {e}")
             return None, None
 
-    def registro(self, email, password, nombre_completo, nivel='trabajador'):
+    def registro(self, email, password, nombre, apellidos, departamento_id, nivel='trabajador'):
         try:
             response = db.client.auth.sign_up({ # Clase nativa de las librerias de Supabase
                 "email": email,
                 "password": password,
                 "options": {
                     "data": {
-                        "full_name": nombre_completo,
-                        "rol": nivel # Lo enviamos como 'rol' para que el trigger lo pille
+                        "nombre": nombre,
+                        "apellidos": apellidos,
+                        "departamento_id": departamento_id,
+                        "rol": nivel # Lo envia como 'rol' para que el trigger lo pille
                     }
                 }
             })
-            return response.user # Devuelve el usuario creado
+            # Devuelve el usuario creado
+            return response.user 
         except Exception as e:
             print(f"Error Registro: {e}")
             return None

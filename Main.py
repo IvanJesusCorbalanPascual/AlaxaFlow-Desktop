@@ -73,11 +73,6 @@ QPushButton {
     padding: 5px 15px;
 }
 """
-
-class UsuarioDummy:
-    def __init__(self, id, email):
-        self.id = id
-        self.email = email
         
 if __name__ == "__main__":
     ruta_base = os.path.dirname(os.path.abspath(__file__))
@@ -86,21 +81,25 @@ if __name__ == "__main__":
     app = QApplication(sys.argv)
     app.setStyleSheet(STYLESHEET)
     app.setWindowIcon(QIcon(ruta_icono))
-   
-    # --- CONFIGURACIÓN MANUAL para probar la aplicacion sin tener que logearse todo el rato (Bypasseando el Login) ---
-    
-    # Tu ID real de Supabase (Cópialo de la web si quieres ver tus tareas)
-    # Si pones uno inventado, el tablero saldrá vacío (pero funcionará).
-    MI_ID_SUPABASE = "85eb2c66-b364-4c74-a70c-1d4b3e27dccb" 
-    
-    # El rol con el que queremos probar la aplicacion
-    MI_ROL = "admin"  # Cambia a "empleado" para probar la vista restringida
-    
-    # Creamos el usuario falso
-    usuario_falso = UsuarioDummy(MI_ID_SUPABASE, "yo@prueba.com")
 
-    # Arrancamos DIRECTAMENTE el tablero inyectándole los datos
-    window = MainWindow(usuario=usuario_falso, rol=MI_ROL)
-    window.showMaximized()
+    # Instancia y muestra el diálogo de login
+    login_dialog = LoginDialog()
+      
+    # Verifica que el usuario se haya logueado correctamente
+    if login_dialog.exec_() == QDialog.Accepted:
+        # Recupera el usuario y rol de Supabase guardados en el diálogo
+        usuario = login_dialog.usuario_actual
+        rol = login_dialog.rol_usuario  
+
+        print(f"✅ Login exitoso. Usuario: {usuario.email} | Rol: {rol}")
+
+        # Arranca directamente el tablero inyectándole los datos
+        window = MainWindow(usuario=usuario, rol=rol)
+        window.showMaximized()
     
-    sys.exit(app.exec_())
+        # Ejecuta la app
+        sys.exit(app.exec_())
+
+    else:
+        # Si se cierra el login sin entrar, cierra el programa
+        sys.exit()
