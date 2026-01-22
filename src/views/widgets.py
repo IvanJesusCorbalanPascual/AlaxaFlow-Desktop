@@ -1,9 +1,10 @@
+import os
 from PyQt5.QtWidgets import (QPushButton, QFrame, QVBoxLayout, QLabel, 
                              QScrollArea, QWidget, QGraphicsDropShadowEffect, 
                              QInputDialog, QMessageBox, QMenu, QAction, 
                              QDialog, QLineEdit, QHBoxLayout) # <--- Importantes para el diálogo
-from PyQt5.QtCore import Qt, QMimeData, pyqtSignal
-from PyQt5.QtGui import QDrag, QColor, QPixmap, QCursor
+from PyQt5.QtCore import Qt, QMimeData, pyqtSignal, QSize, QPoint
+from PyQt5.QtGui import QDrag, QColor, QPixmap, QCursor, QIcon
 
 ESTILO_CARD_NORMAL = """
     QPushButton {
@@ -130,11 +131,25 @@ class KanbanCard(QPushButton):
         if event.buttons() == Qt.LeftButton:
             drag = QDrag(self)
             mime = QMimeData()
-            mime.setText(str(self.id_tarea)) 
+            mime.setText(str(self.id_tarea))
             drag.setMimeData(mime)
-            pixmap = QPixmap(self.size())
-            self.render(pixmap)
-            drag.setPixmap(pixmap)
+
+            # Captura fiable del widget (incluye estilo y contenido)
+            try:
+                pixmap = self.grab()
+            except Exception:
+                pixmap = QPixmap(self.size())
+                self.render(pixmap)
+
+            # Si la captura es válida, ajustar y centrar el hotspot para un preview correcto
+            if not pixmap.isNull():
+                # Escalado suave si es necesario (mantener tamaño original normalmente)
+                scaled = pixmap.scaled(pixmap.width(), pixmap.height(), Qt.KeepAspectRatio, Qt.SmoothTransformation)
+                drag.setPixmap(scaled)
+                center = scaled.rect().center()
+                if isinstance(center, QPoint):
+                    drag.setHotSpot(center)
+
             drag.exec_(Qt.MoveAction)
 
     # Menú Contextual (Clic Derecho)
@@ -160,10 +175,42 @@ class KanbanColumn(QFrame):
         self.layout = QVBoxLayout()
         self.layout.setContentsMargins(10, 10, 10, 10)
         
-        header = QLabel(titulo)
-        header.setObjectName("TituloColumna")
-        header.setStyleSheet("")
-        self.layout.addWidget(header)
+        # Header con título y botón eliminar
+        self.titulo = titulo
+        header_layout = QHBoxLayout()
+        header_layout.setAlignment(Qt.AlignVCenter)
+        header_label = QLabel(titulo)
+        header_label.setObjectName("TituloColumna")
+        header_label.setStyleSheet("")
+        header_layout.addWidget(header_label)
+
+        # Botón eliminar columna (usa assets/papelera.png si existe)
+        icon_path = os.path.join(os.path.dirname(__file__), "../../assets/papelera.png")
+        btn = QPushButton()
+        # Asegurar contenidos centrados y sin padding extra
+        btn.setFlat(True)
+        btn.setStyleSheet("background:transparent; border:none; padding:4px; margin:0px;")
+        btn.setContentsMargins(0, 0, 0, 0)
+        btn.setCursor(Qt.PointingHandCursor)
+        btn.setToolTip("Eliminar columna")
+        # Hacemos el botón más grande y el icono aún más visible
+        btn.setFixedSize(64, 56)
+        if os.path.exists(icon_path):
+            btn.setIcon(QIcon(icon_path))
+            btn.setIconSize(QSize(40, 40))
+            btn.setFlat(True)
+        else:
+            # Fallback a emoji si no existe la imagen
+            btn.setText("🗑️")
+            btn.setStyleSheet("font-size:28px; line-height:28px;")
+
+        btn.clicked.connect(self.pedir_eliminar_columna)
+        self.btn_delete_col = btn
+        header_layout.addWidget(self.btn_delete_col)
+
+        # Asegurar que el label ocupe el espacio disponible
+        header_layout.setStretch(0, 1)
+        self.layout.addLayout(header_layout)
         
         self.scroll = QScrollArea()
         self.scroll.setWidgetResizable(True)
@@ -210,3 +257,16 @@ class KanbanColumn(QFrame):
 
     def add_card_widget(self, card_widget):
         self.scroll_layout.addWidget(card_widget)
+
+    def pedir_eliminar_columna(self):
+        # Delegamos la confirmación y la eliminación a la ventana principal
+        if hasattr(self.main_window, 'solicitar_eliminar_columna'):
+            self.main_window.solicitar_eliminar_columna(self.id_columna, self.titulo)
+        else:
+            # Fallback: intentar eliminar directamente
+            confirm = QMessageBox.question(self, "Eliminar columna", 
+                                           "¿Eliminar esta columna y sus tareas?", 
+                                           QMessageBox.Yes | QMessageBox.No)
+            if confirm == QMessageBox.Yes:
+                if self.manager.eliminar_columna(self.id_columna):
+                    self.main_window.recargar_tablero_completo()

@@ -99,6 +99,35 @@ class TaskManager:
             print(f"Error tareas: {e}")
             return []
 
+    def obtener_tareas_por_columna(self, columna_id):
+        # Devuelve las tareas que pertenecen a una columna concreta
+        try:
+            if not db.client:
+                print("Sin conexión a la base de datos: no se pueden obtener tareas por columna.")
+                return []
+            res = db.client.table('tareas').select('*').eq('columna_id', columna_id).execute()
+            return res.data if res and res.data else []
+        except Exception as e:
+            print(f"Error obtener_tareas_por_columna: {e}")
+            return []
+
+    def eliminar_columna(self, columna_id):
+        # Elimina todas las tareas de la columna y la propia columna
+        try:
+            if not db.client:
+                print("Sin conexión a la base de datos: no se puede eliminar la columna.")
+                return False
+
+            # Primero borrar tareas asociadas
+            db.client.table('tareas').delete().eq('columna_id', columna_id).execute()
+
+            # Luego borrar la propia columna
+            db.client.table('columnas').delete().eq('id', columna_id).execute()
+            return True
+        except Exception as e:
+            print(f"Error eliminar_columna: {e}")
+            return False
+
     def crear_tarea(self, titulo, columna_id, usuario_id):
         # Crea una nueva tarea en la columna X
         try:

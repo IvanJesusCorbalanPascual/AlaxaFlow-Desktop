@@ -374,6 +374,30 @@ class MainWindow(QMainWindow):
         else:
             QMessageBox.critical(self, "Error", "No se pudo crear la columna en la base de datos.")
 
+    def solicitar_eliminar_columna(self, columna_id, titulo_columna=None):
+        # Comprueba si la columna tiene tareas y pide confirmación si es necesario
+        tareas = self.task_manager.obtener_tareas_por_columna(columna_id)
+
+        if not tareas:
+            # No hay tareas, eliminar directamente
+            eliminado = self.task_manager.eliminar_columna(columna_id)
+            if eliminado:
+                self.recargar_tablero_completo()
+            else:
+                QMessageBox.critical(self, "Error", "No se pudo eliminar la columna.")
+            return
+
+        # Si hay tareas, avisar que se eliminarán
+        count = len(tareas)
+        msg = f"La columna '{titulo_columna or ''}' contiene {count} tarea(s).\nSi continúas, las tareas también serán eliminadas. ¿Deseas continuar?"
+        respuesta = QMessageBox.question(self, "Eliminar columna con tareas", msg, QMessageBox.Yes | QMessageBox.No)
+        if respuesta == QMessageBox.Yes:
+            eliminado = self.task_manager.eliminar_columna(columna_id)
+            if eliminado:
+                self.recargar_tablero_completo()
+            else:
+                QMessageBox.critical(self, "Error", "No se pudo eliminar la columna y/o sus tareas.")
+
     def abrir_panel_admin(self):
         self.admin_window = AdminWindow(self.usuario, parent_window=self)
         self.admin_window.show()
