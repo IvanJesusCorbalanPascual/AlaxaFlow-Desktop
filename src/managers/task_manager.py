@@ -128,6 +128,21 @@ class TaskManager:
             print(f"Error eliminar_columna: {e}")
             return False
 
+    def editar_columna(self, columna_id, nuevo_titulo):
+        # Edita el título de una columna
+        try:
+            if not db.client:
+                print("Sin conexión a la base de datos: no se puede editar la columna.")
+                return False
+
+            db.client.table('columnas').update({
+                'titulo': nuevo_titulo
+            }).eq('id', columna_id).execute()
+            return True
+        except Exception as e:
+            print(f"Error editar_columna: {e}")
+            return False
+
     def crear_tarea(self, titulo, columna_id, usuario_id):
         # Crea una nueva tarea en la columna X
         try:

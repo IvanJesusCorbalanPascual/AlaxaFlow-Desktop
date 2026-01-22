@@ -179,37 +179,57 @@ class KanbanColumn(QFrame):
         self.titulo = titulo
         header_layout = QHBoxLayout()
         header_layout.setAlignment(Qt.AlignVCenter)
-        header_label = QLabel(titulo)
-        header_label.setObjectName("TituloColumna")
-        header_label.setStyleSheet("")
-        header_layout.addWidget(header_label)
+        self.header_label = QLabel(titulo)
+        self.header_label.setObjectName("TituloColumna")
+        self.header_label.setStyleSheet("")
+        header_layout.addWidget(self.header_label)
+
+        # Quitar stretch: colocamos los botones justo al lado del título (a la izquierda)
+        header_layout.setSpacing(2)
+        header_layout.setContentsMargins(0, 0, 0, 0)
+
+        # Botón editar columna (usa assets/lapiz.png si existe)
+        edit_icon_path = os.path.join(os.path.dirname(__file__), "../../assets/lapiz.png")
+        edit_btn = QPushButton()
+        edit_btn.setCursor(Qt.PointingHandCursor)
+        edit_btn.setToolTip("Editar título de columna")
+        edit_btn.setFixedSize(44, 38)
+        edit_btn.setFlat(True)
+        edit_btn.setStyleSheet("background:transparent; border:none; padding:2px; margin:0px;")
+        if os.path.exists(edit_icon_path):
+            edit_btn.setIcon(QIcon(edit_icon_path))
+            edit_btn.setIconSize(QSize(28, 28))
+        else:
+            edit_btn.setText("✏️")
+            edit_btn.setStyleSheet("background:transparent; border:none; padding:2px; margin:0px; font-size:18px;")
+        edit_btn.setContentsMargins(0, 0, 0, 0)
+        edit_btn.clicked.connect(self.pedir_editar_columna)
+        self.btn_edit_col = edit_btn
 
         # Botón eliminar columna (usa assets/papelera.png si existe)
         icon_path = os.path.join(os.path.dirname(__file__), "../../assets/papelera.png")
         btn = QPushButton()
-        # Asegurar contenidos centrados y sin padding extra
         btn.setFlat(True)
-        btn.setStyleSheet("background:transparent; border:none; padding:4px; margin:0px;")
+        btn.setStyleSheet("background:transparent; border:none; padding:2px; margin:0px;")
         btn.setContentsMargins(0, 0, 0, 0)
         btn.setCursor(Qt.PointingHandCursor)
         btn.setToolTip("Eliminar columna")
-        # Hacemos el botón más grande y el icono aún más visible
-        btn.setFixedSize(64, 56)
+        # Aumentamos el tamaño del botón eliminar para igualar al de editar
+        btn.setFixedSize(88, 76)
         if os.path.exists(icon_path):
             btn.setIcon(QIcon(icon_path))
-            btn.setIconSize(QSize(40, 40))
-            btn.setFlat(True)
+            btn.setIconSize(QSize(56, 56))
         else:
-            # Fallback a emoji si no existe la imagen
             btn.setText("🗑️")
-            btn.setStyleSheet("font-size:28px; line-height:28px;")
+            btn.setStyleSheet("background:transparent; border:none; padding:2px; margin:0px; font-size:18px;")
+        btn.setContentsMargins(0, 0, 0, 0)
 
         btn.clicked.connect(self.pedir_eliminar_columna)
         self.btn_delete_col = btn
-        header_layout.addWidget(self.btn_delete_col)
 
-        # Asegurar que el label ocupe el espacio disponible
-        header_layout.setStretch(0, 1)
+        # Añadir los botones pegados junto al título (izquierda)
+        header_layout.addWidget(self.btn_edit_col)
+        header_layout.addWidget(self.btn_delete_col)
         self.layout.addLayout(header_layout)
         
         self.scroll = QScrollArea()
@@ -257,6 +277,30 @@ class KanbanColumn(QFrame):
 
     def add_card_widget(self, card_widget):
         self.scroll_layout.addWidget(card_widget)
+
+    def pedir_editar_columna(self):
+        # Mostrar diálogo para editar el título de la columna
+        nuevo, ok = QInputDialog.getText(self, "Editar columna", "Nuevo título:", text=self.titulo)
+        if not ok:
+            return
+        nuevo = nuevo.strip()
+        if not nuevo:
+            QMessageBox.warning(self, "Nombre inválido", "El título no puede estar vacío.")
+            return
+
+        if nuevo == self.titulo:
+            return
+
+        # Intentar actualizar en la BD
+        if self.manager.editar_columna(self.id_columna, nuevo):
+            # Actualizar visualmente
+            self.titulo = nuevo
+            self.header_label.setText(nuevo)
+            # Notificar ventana principal para recargar si es necesario
+            if hasattr(self.main_window, 'recargar_tablero_completo'):
+                self.main_window.recargar_tablero_completo()
+        else:
+            QMessageBox.critical(self, "Error", "No se pudo actualizar el título en la base de datos.")
 
     def pedir_eliminar_columna(self):
         # Delegamos la confirmación y la eliminación a la ventana principal
