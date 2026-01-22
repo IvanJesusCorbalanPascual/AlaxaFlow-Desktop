@@ -200,6 +200,14 @@ class MainWindow(QMainWindow):
         # Inserta el botón en la parte superior a la izquierda de cerrar sesión
         self.TopBar.layout().insertWidget(5, self.btn_accesibilidad)
 
+        # Botón para añadir columnas al tablero
+        self.btn_add_column = QPushButton("➕ Añadir Columna")
+        self.btn_add_column.setCursor(Qt.PointingHandCursor)
+        self.btn_add_column.setStyleSheet("background-color: transparent; color: #FFFFFF; border: 1px solid #D7CCC8; padding: 6px; border-radius: 4px;")
+        self.btn_add_column.clicked.connect(self.agregar_columna)
+        # Lo colocamos junto al botón de accesibilidad
+        self.TopBar.layout().insertWidget(6, self.btn_add_column)
+
         # Botón Admin (Solo para admin y manager)
         
         # 2. LOGICA NUEVA: Botón del Panel de Admin
@@ -348,6 +356,23 @@ class MainWindow(QMainWindow):
             QMessageBox.information(self, "Éxito", "Usuario registrado correctamente.")
         else:
             QMessageBox.critical(self, "Error", "Fallo al registrar en Supabase.")
+
+    def agregar_columna(self):
+        # Pide el título de la nueva columna y la crea en la BD
+        titulo, ok = QInputDialog.getText(self, "Nueva Columna", "Título de la columna:")
+        if not ok or not titulo:
+            return
+
+        if not self.tablero_actual:
+            QMessageBox.critical(self, "Error", "No hay tablero activo.")
+            return
+
+        creado = self.task_manager.crear_columna(self.tablero_actual['id'], titulo)
+        if creado:
+            # Recargamos el tablero para mostrar la nueva columna
+            self.recargar_tablero_completo()
+        else:
+            QMessageBox.critical(self, "Error", "No se pudo crear la columna en la base de datos.")
 
     def abrir_panel_admin(self):
         self.admin_window = AdminWindow(self.usuario, parent_window=self)

@@ -8,11 +8,16 @@ class TaskManager:
     def obtener_o_crear_tablero_inicial(self, usuario_id):
         # Busca si existe un tablero. Si no, crea uno por defecto con columnas.
         try:
+            # Si no hay cliente disponible, no intentamos llamar a la BD
+            if not db.client:
+                print("Sin conexión a la base de datos: no se pueden obtener tableros.")
+                return None
+
             # Buscar tableros existentes en la bd
             tableros = db.client.table('tableros').select("*").execute()
-            
+
             if tableros.data and len(tableros.data) > 0:
-                return tableros.data[0] # Devolvemos el primero que encontremos
+                return tableros.data[0]
             
             # Si no hay, creamos uno por defecto
             print("Creando tablero inicial...")
@@ -41,12 +46,40 @@ class TaskManager:
     def obtener_columnas(self, tablero_id):
         # Recupera las columnas de un tablero específico ordenadas
         try:
+            if not db.client:
+                print("Sin conexión a la base de datos: no se pueden obtener columnas.")
+                return []
+
             return db.client.table('columnas').select("*")\
                 .eq('tablero_id', tablero_id)\
                 .order('orden').execute().data
         except Exception as e:
             print(f"Error columnas: {e}")
             return []
+
+    def crear_columna(self, tablero_id, titulo):
+        # Crea una nueva columna al final del tablero (orden incremental)
+        try:
+            # Obtener el mayor orden actual
+            res = db.client.table('columnas').select('orden')\
+                .eq('tablero_id', tablero_id)\
+                .order('orden', desc=True).limit(1).execute()
+
+            if res.data and len(res.data) > 0:
+                nuevo_orden = res.data[0].get('orden', 0) + 1
+            else:
+                nuevo_orden = 1
+
+            insercion = db.client.table('columnas').insert({
+                'tablero_id': tablero_id,
+                'titulo': titulo,
+                'orden': nuevo_orden
+            }).execute()
+
+            return insercion.data is not None
+        except Exception as e:
+            print(f"Error crear columna: {e}")
+            return False
 
     # --- GESTIÓN DE TAREAS ---
     def obtener_tareas_por_tablero(self, tablero_id):
@@ -69,6 +102,9 @@ class TaskManager:
     def crear_tarea(self, titulo, columna_id, usuario_id):
         # Crea una nueva tarea en la columna X
         try:
+            if not db.client:
+                print("Sin conexión a la base de datos: no se puede crear la tarea.")
+                return False
             db.client.table('tareas').insert({
                 "titulo": titulo,
                 "columna_id": columna_id,
@@ -83,6 +119,9 @@ class TaskManager:
     def mover_tarea(self, id_tarea, id_nueva_columna):
         # Mueve una tarea con id (id_tarea) a la nueva columna (id_nueva_columna)
         try:
+            if not db.client:
+                print("Sin conexión a la base de datos: no se puede mover la tarea.")
+                return False
             db.client.table('tareas').update({
                 "columna_id": id_nueva_columna
             }).eq('id', id_tarea).execute()
@@ -98,6 +137,9 @@ class TaskManager:
             print("Solo Admin o Manager pueden borrar.")
             return False
         try:
+            if not db.client:
+                print("Sin conexión a la base de datos: no se puede eliminar la tarea.")
+                return False
             db.client.table('tareas').delete().eq('id', id_tarea).execute()
             return True
         except Exception as e:
@@ -106,6 +148,9 @@ class TaskManager:
         
     def editar_tarea(self, id_tarea, nuevo_titulo):
         try:
+            if not db.client:
+                print("Sin conexión a la base de datos: no se puede editar la tarea.")
+                return False
             db.client.table('tareas').update({
                 "titulo": nuevo_titulo
             }).eq('id', id_tarea).execute()
@@ -118,6 +163,10 @@ class TaskManager:
 
     def obtener_todos_usuarios(self):
         try:
+            if not db.client:
+                print("Sin conexión a la base de datos: no se pueden listar usuarios.")
+                return []
+
             # Traemos todos los perfiles de la base de datos
             response = db.client.table('perfiles').select('*').execute()
             return response.data
@@ -127,6 +176,10 @@ class TaskManager:
 
     def obtener_todos_tableros(self):
         try:
+            if not db.client:
+                print("Sin conexión a la base de datos: no se pueden listar tableros.")
+                return []
+
             # Traemos todos los tableros
             response = db.client.table('tableros').select('*').execute()
             return response.data
@@ -137,6 +190,9 @@ class TaskManager:
     def crear_tablero_admin(self, titulo, descripcion, id_owner):
         # Crear tablero asignado a un usuario específico (Lógica de Admin)
         try:
+            if not db.client:
+                print("Sin conexión a la base de datos: no se puede crear tablero.")
+                return False
             data = {
                 "titulo": titulo, 
                 "descripcion": descripcion, 
