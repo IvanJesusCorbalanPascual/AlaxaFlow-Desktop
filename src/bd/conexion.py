@@ -1,6 +1,6 @@
 import os
-from supabase import create_client, Client
 import httpx
+from typing import Any
 
 # URL y clave de Supabase
 URL = "https://gveyougusrpzvpfhmznd.supabase.co"
@@ -19,6 +19,10 @@ class ConexionBD:
         # Lazy init: crea el cliente solo al primer uso.
         if self._client is None:
             try:
+                # Import supabase lazily to avoid heavy imports at module load
+                # (pydantic/postgrest plugin discovery can block on startup).
+                from supabase import create_client  # local import
+
                 # create_client no acepta un httpx client en esta versión,
                 # se llama de la forma estándar para evitar el error.
                 self._client = create_client(URL, KEY)

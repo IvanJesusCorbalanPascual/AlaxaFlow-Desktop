@@ -2,26 +2,28 @@ import os
 from PyQt5.QtWidgets import (QPushButton, QFrame, QVBoxLayout, QLabel, 
                              QScrollArea, QWidget, QGraphicsDropShadowEffect, 
                              QInputDialog, QMessageBox, QMenu, QAction, 
-                             QDialog, QLineEdit, QHBoxLayout) # <--- Importantes para el diálogo
+                             QDialog, QLineEdit, QHBoxLayout, QSizePolicy) # <--- Importantes para el diálogo
 from PyQt5.QtCore import Qt, QMimeData, pyqtSignal, QSize, QPoint
 from PyQt5.QtGui import QDrag, QColor, QPixmap, QCursor, QIcon
 
 ESTILO_CARD_NORMAL = """
-    QPushButton {
+    QFrame[class="tarjeta"] {
         background-color: #FFFFFF; color: #3E2723;
         border: 1px solid #E0E0E0; border-radius: 6px;
-        padding: 15px; text-align: left; font-size: 14px; margin-bottom: 5px;
+        padding: 12px; text-align: left; font-size: 14px; margin-bottom: 8px;
     }
-    QPushButton:hover { background-color: #FFF8E1; border: 1px solid #FFB74D; }
+    QFrame[class="tarjeta"] QLabel { background: transparent; }
+    QFrame[class="tarjeta"]:hover { background-color: #FFF8E1; border: 1px solid #FFB74D; }
 """
 
 ESTILO_CARD_CONTRASTE = """
-    QPushButton {
+    QFrame[class="tarjeta"] {
         background-color: #000000; color: #FFFF00;
         border: 2px solid #FFFFFF; border-radius: 0px;
-        padding: 15px; text-align: left; font-size: 16px; font-weight: bold; margin-bottom: 10px;
+        padding: 12px; text-align: left; font-size: 16px; font-weight: bold; margin-bottom: 10px;
     }
-    QPushButton:hover { background-color: #333333; border: 2px dashed #FFFF00; }
+    QFrame[class="tarjeta"] QLabel { background: transparent; }
+    QFrame[class="tarjeta"]:hover { background-color: #333333; border: 2px dashed #FFFF00; }
 """
 
 """
@@ -74,26 +76,36 @@ class TareaDialog(QDialog):
             self.accept()
 
 # --- TARJETA ARRASTRABLE ---
-class KanbanCard(QPushButton):
+class KanbanCard(QFrame):
     # Señales para comunicarse con la ventana principal
     request_delete = pyqtSignal(str) # Señal para pedir borrar la tarea
     request_refresh = pyqtSignal() # Señal para pedir guardar cambios
 
     def __init__(self, id_tarea, text, rol_usuario): 
-        super().__init__(text)
+        super().__init__()
         self.id_tarea = id_tarea 
         self.rol_usuario = rol_usuario 
         self.texto_actual = text # Guardamos el texto original
-        
-        self.setProperty("class", "tarjeta")
-        self.setCursor(Qt.PointingHandCursor)
-        
-        # CONEXIÓN CLIC IZQUIERDO -> ABRIR EDICIÓN
-        self.clicked.connect(self.abrir_detalle)
 
-        # Estilo
+        self.setProperty("class", "tarjeta")
+        self.setFrameShape(QFrame.StyledPanel)
+        self.setLineWidth(1)
+        self.setCursor(Qt.PointingHandCursor)
+
+        # Layout interno con etiqueta que soporta wrap
+        self.layout = QVBoxLayout(self)
+        self.layout.setContentsMargins(12, 8, 12, 8)
+        self.layout.setSpacing(0)
+
+        self.label = QLabel(text)
+        self.label.setWordWrap(True)
+        self.label.setAlignment(Qt.AlignLeft | Qt.AlignVCenter)
+        self.label.setStyleSheet("background: transparent;")
+        self.layout.addWidget(self.label)
+
+        # Estilo general (similar al anterior QPushButton)
         self.setStyleSheet(ESTILO_CARD_NORMAL)
-        
+
         # Sombra
         shadow = QGraphicsDropShadowEffect()
         shadow.setBlurRadius(10)
@@ -152,6 +164,12 @@ class KanbanCard(QPushButton):
 
             drag.exec_(Qt.MoveAction)
 
+    def mouseReleaseEvent(self, event):
+        if event.button() == Qt.LeftButton:
+            # Simula el comportamiento de "clicked" del QPushButton
+            self.abrir_detalle()
+        super().mouseReleaseEvent(event)
+
     # Menú Contextual (Clic Derecho)
     def contextMenuEvent(self, event):
         if self.rol_usuario in ['admin', 'manager']:
@@ -160,6 +178,13 @@ class KanbanCard(QPushButton):
             action_delete.triggered.connect(lambda: self.request_delete.emit(str(self.id_tarea)))
             menu.addAction(action_delete)
             menu.exec_(QCursor.pos())
+
+    # Compatibilidad con la API previa (MainWindow usa card.text() y card.setText(...))
+    def text(self):
+        return self.label.text()
+
+    def setText(self, nuevo):
+        self.label.setText(nuevo)
 
 # --- COLUMNA ---
 class KanbanColumn(QFrame):
@@ -173,20 +198,30 @@ class KanbanColumn(QFrame):
         self.setAcceptDrops(True) 
         
         self.layout = QVBoxLayout()
-        self.layout.setContentsMargins(10, 10, 10, 10)
+        # Márgenes simétricos: mismo espacio a izquierda y derecha
+        self.layout.setContentsMargins(12, 10, 12, 10)
         
         # Header con título y botón eliminar
         self.titulo = titulo
         header_layout = QHBoxLayout()
         header_layout.setAlignment(Qt.AlignVCenter)
-        self.header_label = QLabel(titulo)
+        self.header_label = QLabel()
+        # Permitimos wrap y forzamos ruptura de palabras largas usando HTML/CSS
+        self.header_label.setWordWrap(True)
+        self.header_label.setTextFormat(Qt.RichText)
+        safe = titulo.replace('&', '&amp;').replace('<', '&lt;').replace('>', '&gt;')
+        self.header_label.setText(f'<div style="word-break:break-all; white-space:normal;">{safe}</div>')
+        # Permitir que el label ocupe el espacio disponible para mostrar el título completo
+        self.header_label.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Preferred)
         self.header_label.setObjectName("TituloColumna")
         self.header_label.setStyleSheet("")
-        header_layout.addWidget(self.header_label)
 
         # Quitar stretch: colocamos los botones justo al lado del título (a la izquierda)
         header_layout.setSpacing(2)
-        header_layout.setContentsMargins(0, 0, 0, 0)
+        # Márgenes simétricos para header: mismo espacio a izquierda y derecha
+        header_layout.setContentsMargins(12, 0, 12, 0)
+
+        # (no stretch aquí; añadiremos el label y el contenedor después de crear los botones)
 
         # Botón editar columna (usa assets/lapiz.png si existe)
         edit_icon_path = os.path.join(os.path.dirname(__file__), "../../assets/lapiz.png")
@@ -227,10 +262,42 @@ class KanbanColumn(QFrame):
         btn.clicked.connect(self.pedir_eliminar_columna)
         self.btn_delete_col = btn
 
-        # Añadir los botones pegados junto al título (izquierda)
-        header_layout.addWidget(self.btn_edit_col)
-        header_layout.addWidget(self.btn_delete_col)
+        # Agrupar los botones en un contenedor con ancho fijo para reservar espacio
+        button_container = QWidget()
+        bc_layout = QHBoxLayout(button_container)
+        bc_layout.setContentsMargins(0, 0, 0, 0)
+        bc_layout.setSpacing(6)
+        bc_layout.addWidget(self.btn_edit_col)
+        bc_layout.addWidget(self.btn_delete_col)
+
+        # Calcular ancho del área de botones usando sizeHints reales
+        edit_w = self.btn_edit_col.sizeHint().width()
+        del_w = self.btn_delete_col.sizeHint().width()
+        spacing = bc_layout.spacing() or 6
+        button_area_width = edit_w + del_w + spacing
+        button_container.setFixedWidth(button_area_width)
+        button_container.setSizePolicy(QSizePolicy.Fixed, QSizePolicy.Preferred)
+
+        # Añadir el label y el contenedor de botones al header usando espaciadores
+        self.header_label.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Preferred)
+        self.header_label.setContentsMargins(0, 0, 0, 0)
+        header_layout.addSpacing(12)                 # margen izquierdo
+        header_layout.addWidget(self.header_label)
+        header_layout.addStretch()
+        header_layout.addWidget(button_container)
+        header_layout.addSpacing(12)                 # margen derecho igual al izquierdo
         self.layout.addLayout(header_layout)
+
+        # Calcular anchura mínima de la columna basada en el título y los botones
+        # Usamos las medidas de los botones calculadas arriba y el ancho del texto
+        fm = self.header_label.fontMetrics()
+        text_width = fm.horizontalAdvance(titulo)
+        # Espacio extra: botones + márgenes interiores (usamos 12px de margen lateral)
+        extra = (edit_w if 'edit_w' in locals() else 44) + (del_w if 'del_w' in locals() else 88) + 12 * 2 + 20
+        desired_width = max(260, text_width + extra)
+        self.setMinimumWidth(desired_width)
+        # Evitar que el layout padre reduzca la columna: preferimos mantener el ancho mínimo
+        self.setSizePolicy(QSizePolicy.Fixed, QSizePolicy.Preferred)
         
         self.scroll = QScrollArea()
         self.scroll.setWidgetResizable(True)
@@ -276,7 +343,20 @@ class KanbanColumn(QFrame):
                 print("Error: Sin usuario")
 
     def add_card_widget(self, card_widget):
+        # Asegurar que la tarjeta no estire la columna: limitar su ancho al de la columna
+        max_w = max(100, self.minimumWidth() - 20)
+        card_widget.setMaximumWidth(max_w)
+        card_widget.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Minimum)
         self.scroll_layout.addWidget(card_widget)
+
+    def resizeEvent(self, event):
+        # Al redimensionar la columna, actualizar el ancho máximo de las tarjetas
+        max_w = max(100, self.width() - 20)
+        for i in range(self.scroll_layout.count()):
+            w = self.scroll_layout.itemAt(i).widget()
+            if w:
+                w.setMaximumWidth(max_w)
+        super().resizeEvent(event)
 
     def pedir_editar_columna(self):
         # Mostrar diálogo para editar el título de la columna
@@ -295,7 +375,17 @@ class KanbanColumn(QFrame):
         if self.manager.editar_columna(self.id_columna, nuevo):
             # Actualizar visualmente
             self.titulo = nuevo
-            self.header_label.setText(nuevo)
+            safe = nuevo.replace('&', '&amp;').replace('<', '&lt;').replace('>', '&gt;')
+            self.header_label.setText(f'<div style="word-break:break-all; white-space:normal;">{safe}</div>')
+            # Recalcular anchura mínima en caso de cambio de título
+            fm = self.header_label.fontMetrics()
+            text_width = fm.horizontalAdvance(nuevo)
+            extra = self.btn_edit_col.width() or 44
+            extra += self.btn_delete_col.width() or 88
+            extra += 14 * 2 + 20
+            desired_width = max(260, text_width + extra)
+            self.setMinimumWidth(desired_width)
+            self.setSizePolicy(QSizePolicy.Fixed, QSizePolicy.Preferred)
             # Notificar ventana principal para recargar si es necesario
             if hasattr(self.main_window, 'recargar_tablero_completo'):
                 self.main_window.recargar_tablero_completo()

@@ -32,10 +32,11 @@ QLabel#TituloColumna {
 }
 
 /* Tarjetas (KanbanCard) */
-QPushButton[class="tarjeta"] {
+QFrame[class="tarjeta"] {
     background-color: #FFFFFF; color: #3E2723; border: 1px solid #E0E0E0;
 }
-QPushButton[class="tarjeta"]:hover { background-color: #FFF8E1; border: 1px solid #FFB74D; }
+QFrame[class="tarjeta"] QLabel { background: transparent; }
+QFrame[class="tarjeta"]:hover { background-color: #FFF8E1; border: 1px solid #FFB74D; }
 
 /* BOTÓN AÑADIR TARJETA (Modo Normal) */
 QPushButton#btn_add_card {
@@ -133,13 +134,14 @@ QFrame#Columna QPushButton:hover {
 }
 
 /* --- TARJETAS (KanbanCard) --- */
-QPushButton[class="tarjeta"] {
+QFrame[class="tarjeta"] {
     background-color: #000000; 
     color: #FFFF00; 
     border: 2px solid #FFFF00; 
     margin-bottom: 10px;
     text-align: left;
 }
+QFrame[class="tarjeta"] QLabel { background: transparent; }
 
 /* BOTÓN AÑADIR TARJETA (Modo Alto Contraste) */
 QPushButton#btn_add_card {
