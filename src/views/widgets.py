@@ -2,7 +2,7 @@ import os
 from PyQt5.QtWidgets import (QPushButton, QFrame, QVBoxLayout, QLabel, 
                              QScrollArea, QWidget, QGraphicsDropShadowEffect, 
                              QInputDialog, QMessageBox, QMenu, QAction, 
-                             QDialog, QLineEdit, QHBoxLayout, QSizePolicy) # <--- Importantes para el diálogo
+                             QDialog, QLineEdit, QHBoxLayout, QSizePolicy, QTextEdit, QComboBox) # <--- Importantes para el diálogo
 from PyQt5.QtCore import Qt, QMimeData, pyqtSignal, QSize, QPoint
 from PyQt5.QtGui import QDrag, QColor, QPixmap, QCursor, QIcon
 
@@ -31,45 +31,272 @@ Clase para el diálogo de edición de tareas, contiene la logica para editar y b
 """
 # --- 1. CLASE DIÁLOGO PARA EDITAR/BORRAR ---
 class TareaDialog(QDialog):
-    def __init__(self, tarea_id, titulo_actual, rol_usuario, parent=None):
+    def __init__(self, tarea_id, titulo_actual, rol_usuario, manager_instance, parent=None):
         super().__init__(parent)
-        self.setWindowTitle("Detalle de Tarea")
-        self.setFixedWidth(400)
-        self.accion_realizada = None # "borrar", "editar" o None
+        self.tarea_id = tarea_id
+        self.manager = manager_instance
+        self.accion_realizada = None
         self.nuevo_titulo = titulo_actual
+    
+        self.setWindowTitle("AlaxaFlow - Detalle")
+        self.setFixedWidth(650)
+        # Color del fondo,
+        self.setStyleSheet("""
+            QDialog {
+                background-color: #FAFAFA; /* ALTERADO: Fondo Crema suave (antes #FFFFFF) */
+                border: 2px solid #D7CCC8; /* AÑADIDO: Borde marrón suave */
+                border-radius: 8px;
+            }
+            
+            /* TÍTULO EDITABLE */
+            QLineEdit#InputTitulo {
+                font-family: 'Segoe UI', sans-serif;
+                font-size: 22px;
+                font-weight: bold;
+                color: #3E2723;   /* ALTERADO: Marrón Oscuro */
+                background: transparent;
+                border: 2px solid transparent;
+                padding: 4px 8px; /* AÑADIDO: Padding extra para evitar cortes */
+                border-radius: 5px;
+                selection-background-color: #FFB74D; /* AÑADIDO: Color selección */
+                selection-color: #3E2723;
+            }
+            QLineEdit#InputTitulo:hover {
+                background-color: #FFFFFF; /* ALTERADO: Blanco al pasar el ratón */
+                border: 2px dashed #D7CCC8; 
+            }
+            QLineEdit#InputTitulo:focus {
+                background-color: #FFFFFF;
+                border: 2px solid #FFB74D; /* ALTERADO: Foco naranja Alaxa */
+            }
+            
+            /* ETIQUETAS */
+            QLabel { color: #5D4037; font-weight: bold; font-size: 14px; }
+            
+            /* ÁREA DE DESCRIPCIÓN */
+            QTextEdit {
+                background-color: #FFFFFF; /* ALTERADO: Blanco limpio (antes gris #F4F5F7) */
+                border: 2px solid #D7CCC8; /* ALTERADO: Borde marrón */
+                border-radius: 6px;
+                padding: 12px;
+                font-size: 14px;
+                color: #3E2723; /* ALTERADO: Texto marrón */
+            }
+            QTextEdit:focus {
+                border: 2px solid #FFB74D; /* ALTERADO: Foco Naranja */
+            }
 
-        layout = QVBoxLayout()
+            /* BOTÓN GUARDAR (Estilo Principal Alaxa) */
+            QPushButton#btn_guardar {
+                background-color: #4E342E; /* ALTERADO: Marrón Oscuro (antes verde) */
+                color: #FFB74D; /* ALTERADO: Texto Naranja (antes blanco) */
+                font-weight: bold; 
+                padding: 10px 20px; 
+                border-radius: 5px; 
+                border: 1px solid #4E342E;
+                font-size: 14px;
+            }
+            QPushButton#btn_guardar:hover { 
+                background-color: #5D4037; 
+                border: 1px solid #FFB74D;
+                color: #FFFFFF;
+            }
 
-        # Campo para editar
-        layout.addWidget(QLabel("Editar título:"))
+            /* BOTÓN BORRAR (Estilo Alerta) */
+            QPushButton#btn_borrar {
+                background-color: transparent; 
+                color: #D32F2F; 
+                font-weight: bold;
+                padding: 8px 15px; 
+                border: 2px solid #D32F2F; /* ALTERADO: Borde más grueso (antes 1px) */
+                border-radius: 5px;
+            }
+            QPushButton#btn_borrar:hover { 
+                background-color: #FFEBEE; 
+            }
+            QComboBox {
+                background-color: #FFFFFF;
+                border: 2px solid #D7CCC8;
+                border-radius: 4px;
+                padding: 5px;
+                font-size: 13px;
+                color: #3E2723;
+                min-width: 200px;
+            }
+            QComboBox:hover { border: 2px solid #FFB74D; }
+            QComboBox::drop-down { border: none; }          
+            QComboBox QAbstractItemView {
+                background-color: #FFFFFF;  /* Fondo de la lista BLANCO */
+                color: #3E2723;             /* Texto MARRÓN */
+                selection-background-color: #FFB74D; /* Color al pasar el ratón (Naranja) */
+                selection-color: #3E2723;   /* Texto al pasar el ratón */
+                border: 1px solid #D7CCC8;
+                outline: none;
+            }
+
+        """)
+        # Layout principal
+        main_layout = QVBoxLayout()
+        main_layout.setContentsMargins(0, 0, 0, 0)
+        main_layout.setSpacing(0)
+        
+        # Cabecera visual marrón
+        header_frame = QFrame()
+        header_frame.setObjectName("HeaderFrame")
+        header_frame.setFixedHeight(50) 
+        header_frame.setStyleSheet("background-color: #4E342E; border-bottom: 3px solid #FFB74D;")
+        
+        header_layout = QHBoxLayout(header_frame)
+        # Margen interno del header
+        header_layout.setContentsMargins(20, 0, 20, 0)
+
+        lbl_text_header = QLabel("DETALLES DE LA TARJETA")
+        lbl_text_header.setObjectName("HeaderTitle")
+        lbl_text_header.setStyleSheet("color: white; font-weight: bold; font-family: 'Segoe UI'; letter-spacing: 1px; border: none;")
+
+        header_layout.addWidget(lbl_text_header)
+        header_layout.addStretch()
+
+        main_layout.addWidget(header_frame)
+
+        # Contenedor para dar margenes internos
+        content_widget = QWidget()
+        content_layout = QVBoxLayout(content_widget)
+        content_layout.setContentsMargins(30, 20, 30, 20) 
+        content_layout.setSpacing(15)
+
         self.input_titulo = QLineEdit(titulo_actual)
-        layout.addWidget(self.input_titulo)
+        self.input_titulo.setObjectName("InputTitulo")
+        self.input_titulo.setPlaceholderText("Escribe el título...")
+
+        # Si el título es muy largo, no aparece acortado
+        self.input_titulo.setCursorPosition(0)
+
+        content_layout.addWidget(self.input_titulo)
+
+        # Sección de asignación de usuario
+        assign_layout = QHBoxLayout()
+
+        lbl_assign_icon = QLabel("👤")
+        lbl_assign_icon.setStyleSheet("font-size: 18px; border: none;")
+        lbl_assign = QLabel("Asignado a:")
+        lbl_assign.setStyleSheet("font-weight: bold; color: #5D4037; border: none;")
+
+        self.combo_usuarios = QComboBox()
+        self.combo_usuarios.setCursor(Qt.PointingHandCursor)
+        self.combo_usuarios.addItem("Sin asignar", None)
+
+        self.cargar_usuarios_combo()
+
+        assign_layout.addWidget(lbl_assign_icon)
+        assign_layout.addWidget(lbl_assign)
+        assign_layout.addWidget(self.combo_usuarios)
+        assign_layout.addStretch()
+
+        # Añade el layout de contenido
+        content_layout.addLayout(assign_layout)
+
+        # Descripción
+        lbl_desc_layout = QHBoxLayout()
+        lbl_desc_icon = QLabel("📝")
+        lbl_desc_icon.setStyleSheet("font-size: 18px; border:none;")
+
+        lbl_desc = QLabel("Descripción")
+        lbl_desc.setStyleSheet("margin-left: 5px; color: #4E342E;")
+        
+        lbl_desc_layout.addWidget(lbl_desc_icon)
+        lbl_desc_layout.addWidget(lbl_desc)
+        # Empuja el label a la izquierda
+        lbl_desc_layout.addStretch()
+
+        content_layout.addLayout(lbl_desc_layout)
+
+        self.input_desc = QTextEdit()
+        self.input_desc.setPlaceholderText("Añade una descripción más detallada sobre esta tarea...")
+        self.input_desc.setMinimumHeight(150)
+
+        content_layout.addWidget(self.input_desc)
+
+        # Carga la descripción desde la BD
+        self.cargar_datos()
+
+        # Espacio antes de los botones
+        main_layout.addSpacing(10)
 
         # Botones
         btn_layout = QHBoxLayout()
         
-        self.btn_guardar = QPushButton("💾 Guardar")
-        self.btn_guardar.setStyleSheet("background-color: #4CAF50; color: white; padding: 6px;")
+        # Botón borrar (Solo si tienes permisos)
+        if rol_usuario in ['admin', 'manager']:
+            self.btn_borrar = QPushButton("🗑️ Eliminar Tarea")
+            
+            # ID para CSS
+            self.btn_borrar.setObjectName("btn_borrar")
+            self.btn_borrar.setCursor(Qt.PointingHandCursor)
+
+            self.btn_borrar.clicked.connect(self.borrar)
+            btn_layout.addWidget(self.btn_borrar)
+
+        # Botón guardar cambios a la derecha
+        self.btn_guardar = QPushButton("💾 Guardar cambios")
+        self.btn_guardar.setCursor(Qt.PointingHandCursor)
+        self.btn_guardar.setStyleSheet("""
+            QPushButton {
+                background-color: #4CAF50; color: white; font-weight: bold; 
+                padding: 10px 20px; border-radius: 5px; border: none; font-size: 14px;
+            }
+            QPushButton:hover { background-color: #43A047; }
+        """)
+
         self.btn_guardar.clicked.connect(self.guardar)
         btn_layout.addWidget(self.btn_guardar)
 
-        # Botón borrar (Solo si tienes permisos)
-        if rol_usuario in ['admin', 'manager']:
-            self.btn_borrar = QPushButton("🗑️ Borrar")
-            self.btn_borrar.setStyleSheet("background-color: #F44336; color: white; padding: 6px;")
-            self.btn_borrar.clicked.connect(self.borrar)
-            btn_layout.addWidget(self.btn_borrar)
-        
-        layout.addLayout(btn_layout)
-        self.setLayout(layout)
+        content_layout.addLayout(btn_layout)
+        main_layout.addWidget(content_widget)
+        self.setLayout(main_layout)
+
+    # Carga los usuarios para el comboBox
+    def cargar_usuarios_combo(self): 
+        try:
+            usuarios = self.manager.obtener_todos_usuarios()
+            for u in usuarios:
+                texto = f"{u.get('nombre', 'Usuario')} ({u.get('email')})"
+                uid = u.get('id')
+                self.combo_usuarios.addItem(texto, uid)
+        except Exception as e:
+            print(f"Error cargando usuarios: {e}")
+
+    def cargar_datos(self):
+        datos = self.manager.obtener_tarea_por_id(self.tarea_id) 
+        if datos and 'descripcion' in datos:
+            self.input_desc.setText(datos['descripcion'] or "") 
+
+            # Selecciona el usuario asignado en el comboBox si existe
+            asignado_id = datos.get('asignado_a')
+            if asignado_id:
+                index = self.combo_usuarios.findData(asignado_id)
+                if index >= 0:
+                    self.combo_usuarios.setCurrentIndex(index)
 
     def guardar(self):
         self.nuevo_titulo = self.input_titulo.text()
+        nueva_desc = self.input_desc.toPlainText()
+
+        # ID del usuario asignado
+        id_usuario = self.combo_usuarios.currentData()
+
+        # Guarda el título y la descripción en la BD
+        self.manager.editar_tarea(self.tarea_id, self.nuevo_titulo)
+        self.manager.editar_descripcion_tarea(self.tarea_id, nueva_desc)
+
+        if hasattr(self.manager, 'editar_asignacion_tarea'):
+            self.manager.editar_asignacion_tarea(self.tarea_id, id_usuario)
+
         self.accion_realizada = "editar"
         self.accept()
 
     def borrar(self):
-        confirmacion = QMessageBox.question(self, "Confirmar", "¿Borrar esta tarea?", 
+        confirmacion = QMessageBox.question(self, "Confirmar", "¿Borrar esta tarea definitivamente?", 
                                             QMessageBox.Yes | QMessageBox.No)
         if confirmacion == QMessageBox.Yes:
             self.accion_realizada = "borrar"
@@ -81,10 +308,11 @@ class KanbanCard(QFrame):
     request_delete = pyqtSignal(str) # Señal para pedir borrar la tarea
     request_refresh = pyqtSignal() # Señal para pedir guardar cambios
 
-    def __init__(self, id_tarea, text, rol_usuario): 
+    def __init__(self, id_tarea, text, rol_usuario, manager): 
         super().__init__()
         self.id_tarea = id_tarea 
         self.rol_usuario = rol_usuario 
+        self.manager = manager
         self.texto_actual = text # Guardamos el texto original
 
         self.setProperty("class", "tarjeta")
@@ -126,7 +354,7 @@ class KanbanCard(QFrame):
 
     # Lógica para abrir el diálogo al hacer clic
     def abrir_detalle(self):
-        dialogo = TareaDialog(self.id_tarea, self.text(), self.rol_usuario, self)
+        dialogo = TareaDialog(self.id_tarea, self.text(), self.rol_usuario, self.manager, self)
         
         if dialogo.exec_() == QDialog.Accepted:
             if dialogo.accion_realizada == "borrar":
