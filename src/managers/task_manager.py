@@ -202,6 +202,29 @@ class TaskManager:
         except Exception as e:
             print(f"Error editar tarea: {e}")
             return False    
+        
+    def editar_descripcion_tarea(self, id_tarea, nueva_descripcion):
+        try:
+            if not db.client:
+                return False
+            
+            # Actualiza solo el campo descripcion
+            db.client.table('tareas').update({
+                "descripcion": nueva_descripcion
+            }).eq('id', id_tarea).execute()
+            
+            return True
+        except Exception as e:
+            print(f"Error editando descripción: {e}")
+            return False
+        
+    # Para recuperar la descripción actualiza al abrir una tarjeta
+    def obtener_tarea_por_id(self, id_tarea):
+        try:
+            res = db.client.table('tareas').select('*').eq('id', id_tarea).single().execute()
+            return res.data
+        except Exception:
+            return None
 
     # --- Gestion de usuarios y tableros por Admin ---
 
@@ -257,4 +280,18 @@ class TaskManager:
             return False
         except Exception as e:
             print(f"Error creando tablero admin: {e}")
+            return False
+        
+    def editar_asignacion_tarea(self, id_tarea, id_usuario):
+        try:
+            if not db.client: return False
+            
+            # Actualiza el campo asignado_a
+            db.client.table('tareas').update({
+                "asignado_a": id_usuario
+            }).eq('id', id_tarea).execute()
+            
+            return True
+        except Exception as e:
+            print(f"Error asignando tarea: {e}")
             return False

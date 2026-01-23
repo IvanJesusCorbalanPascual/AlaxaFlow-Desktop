@@ -336,7 +336,7 @@ class MainWindow(QMainWindow):
             col_id = t['columna_id'] # Esto es un UUID en la bd
             
             # Crea la tarjeta
-            card = KanbanCard(t['id'], t['titulo'], self.rol)
+            card = KanbanCard(t['id'], t['titulo'], self.rol, self.task_manager)
             
             # Conecta las señales
             card.request_delete.connect(self.eliminar_tarea_directa)
