@@ -1,12 +1,36 @@
+import json
+import os
 from src.bd.conexion import db
+
+# Constante para guardar la sesión
+SESSION_FILE = "session.json"
 """
 Clase para gestionar la autenticación de usuarios, contiene la logica para login y registro
 ademas de la conexion con la base de datos de supabase para guardar los datos de los usuarios
 """
 class AuthManager:
-    def login(self, email, password):
+    def _determinar_rol(self, user_id):
         try:
-            # BACKDOOR ADMIN
+             # Orden: admin > manager > lider > trabajador
+            if db.client.table('admins').select('id').eq('id', user_id).execute().data:
+                return 'admin'
+            
+            if db.client.table('managers').select('id').eq('id', user_id).execute().data:
+                return 'manager'
+                
+            if db.client.table('lideres_equipo').select('id').eq('id', user_id).execute().data:
+                return 'lider_equipo'
+                
+            if db.client.table('trabajadores').select('id').eq('id', user_id).execute().data:
+                return 'trabajador'
+
+            return 'trabajador' # Default
+        except Exception as e:
+            print(f"Error determinando rol: {e}")
+            return 'trabajador'
+
+    def login(self, email, password, recordar=False):
+        try:
             # BACKDOOR ADMIN
             if email == 'admin' and password == 'admin':
                 class MockUser:
@@ -19,24 +43,16 @@ class AuthManager:
                 "email": email, "password": password
             })
             user = response.user
+            session = response.session
             
             if user:
-                # Determinar rol buscando en las tablas una por una
-                # Orden: admin > manager > lider > trabajador
-                if db.client.table('admins').select('id').eq('id', user.id).execute().data:
-                    return user, 'admin'
-                
-                if db.client.table('managers').select('id').eq('id', user.id).execute().data:
-                    return user, 'manager'
-                    
-                if db.client.table('lideres_equipo').select('id').eq('id', user.id).execute().data:
-                    return user, 'lider_equipo'
-                    
-                if db.client.table('trabajadores').select('id').eq('id', user.id).execute().data:
-                    return user, 'trabajador'
-                
-                # Default o error si no esta en ninguna tabla publica pero si en auth
-                return user, 'trabajador' 
+                # Guardar sesión si se solicitó (ANTES DE RETORNAR)
+                if recordar and session:
+                    self.guardar_sesion_local(session)
+
+                # Determinar rol
+                rol = self._determinar_rol(user.id)
+                return user, rol
                 
             return None, None
         except Exception as e:
@@ -134,3 +150,47 @@ class AuthManager:
                  return None
                  
             return None
+            print(f"Error Registro: {e}")
+            return None
+        
+    # Guarda la sesión localmente en un archivo JSON
+    def guardar_sesion_local(self, session):
+        try:
+            data = {
+                "access_token": session.access_token,
+                "refresh_token": session.refresh_token
+            }
+            with open(SESSION_FILE, 'w') as f:
+                json.dump(data, f)
+        except Exception as e:
+            print(f"Error guardando sesión: {e}")
+
+    # Carga la sesión desde el archivo JSON si existe
+    def login_automatico(self):
+        if not os.path.exists(SESSION_FILE):
+            return None, None
+        
+        try:
+            with open(SESSION_FILE, 'r') as f:
+                data = json.load(f)
+
+            # Intenta restaurar la sesión en Supabase
+            response = db.client.auth.set_session(data['access_token'], data['refresh_token'])
+
+            user = response.user
+            if user:
+                # Usar el helper para determinar rol
+                nivel = self._determinar_rol(user.id)
+                print("Sesión restaurada automáticamente")
+                return user, nivel
+        except Exception as e:
+            print(f"Sesión caducada o inválida: {e}")
+            # Si falla, borra el archivo de sesión corrupto
+            self.borrar_sesion_local()
+
+        return None, None
+    
+    # Método para borrar el archivo al hacer logout
+    def borrar_sesion_local(self):
+        if os.path.exists(SESSION_FILE):
+            os.remove(SESSION_FILE)
