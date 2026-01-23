@@ -285,6 +285,12 @@ class TareaDialog(QDialog):
         # ID del usuario asignado
         id_usuario = self.combo_usuarios.currentData()
 
+        # Guarda el nombre para actualizar en la tarjeta visualmente
+        if id_usuario:
+             self.nombre_asignado_final = self.combo_usuarios.currentText()
+        else:
+             self.nombre_asignado_final = None
+
         # Guarda el título y la descripción en la BD
         self.manager.editar_tarea(self.tarea_id, self.nuevo_titulo)
         self.manager.editar_descripcion_tarea(self.tarea_id, nueva_desc)
@@ -308,7 +314,7 @@ class KanbanCard(QFrame):
     request_delete = pyqtSignal(str) # Señal para pedir borrar la tarea
     request_refresh = pyqtSignal() # Señal para pedir guardar cambios
 
-    def __init__(self, id_tarea, text, rol_usuario, manager): 
+    def __init__(self, id_tarea, text, rol_usuario, manager, nombre_asignado=None): 
         super().__init__()
         self.id_tarea = id_tarea 
         self.rol_usuario = rol_usuario 
@@ -323,13 +329,25 @@ class KanbanCard(QFrame):
         # Layout interno con etiqueta que soporta wrap
         self.layout = QVBoxLayout(self)
         self.layout.setContentsMargins(12, 8, 12, 8)
-        self.layout.setSpacing(0)
+        self.layout.setSpacing(5)
 
         self.label = QLabel(text)
         self.label.setWordWrap(True)
         self.label.setAlignment(Qt.AlignLeft | Qt.AlignVCenter)
         self.label.setStyleSheet("background: transparent;")
         self.layout.addWidget(self.label)
+
+        # Etiquete de asignado, si existe
+        self.lbl_asignado = QLabel()
+        self.lbl_asignado.setStyleSheet("color: #795548; font-size: 11px; margin-top: 4px; font-weight: bold;")
+
+        if nombre_asignado:
+            self.lbl_asignado.setText(f"👤 {nombre_asignado}")
+            self.lbl_asignado.show()
+        else:
+            self.lbl_asignado.hide()
+
+        self.layout.addWidget(self.lbl_asignado)
 
         # Estilo general (similar al anterior QPushButton)
         self.setStyleSheet(ESTILO_CARD_NORMAL)
@@ -341,6 +359,14 @@ class KanbanCard(QFrame):
         shadow.setYOffset(2)
         shadow.setColor(QColor(0, 0, 0, 30))
         self.setGraphicsEffect(shadow)
+
+    def actualizar_asignado_visual(self, texto_nombre):
+        if texto_nombre and texto_nombre != "Sin asignar":
+            self.lbl_asignado.setText(f"👤 {texto_nombre}")
+            self.lbl_asignado.show()
+        else:
+            self.lbl_asignado.clear()
+            self.lbl_asignado.hide()
 
     # Cambia visualmente la tarjeta
     def set_modo_visual(self, modo):
@@ -363,6 +389,11 @@ class KanbanCard(QFrame):
             elif dialogo.accion_realizada == "editar":
                 # Actualizamos el texto visualmente
                 self.setText(dialogo.nuevo_titulo)
+
+                # Actualizamos el asignado visualmente al volver
+                if hasattr(dialogo, 'nombre_asignado_final'):
+                    self.actualizar_asignado_visual(dialogo.nombre_asignado_final)
+
                 # Avisamos a la ventana principal para que guarde en BD
                 self.request_refresh.emit()
 
@@ -425,9 +456,22 @@ class KanbanColumn(QFrame):
         self.setObjectName("Columna")
         self.setAcceptDrops(True) 
         
+        self.setStyleSheet("""
+            QFrame#Columna {
+                background-color: #EFF1F3;
+                border: 1px solid #D7CCC8;
+                min-width: 280px;
+                min-height: 100%; 
+                border-radius: 8px;
+            }
+        """)
+
+        self.setSizePolicy(QSizePolicy.Fixed, QSizePolicy.Expanding)
+        
         self.layout = QVBoxLayout()
         # Márgenes simétricos: mismo espacio a izquierda y derecha
         self.layout.setContentsMargins(12, 10, 12, 10)
+        self.layout.setSpacing(0)
         
         # Header con título y botón eliminar
         self.titulo = titulo
@@ -438,11 +482,10 @@ class KanbanColumn(QFrame):
         self.header_label.setWordWrap(True)
         self.header_label.setTextFormat(Qt.RichText)
         safe = titulo.replace('&', '&amp;').replace('<', '&lt;').replace('>', '&gt;')
-        self.header_label.setText(f'<div style="word-break:break-all; white-space:normal;">{safe}</div>')
+        self.header_label.setText(f'<div style="word-break:break-all; white-space:normal; font-weight:bold; font-size:16px; color:#4E342E;">{safe}</div>')
         # Permitir que el label ocupe el espacio disponible para mostrar el título completo
         self.header_label.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Preferred)
         self.header_label.setObjectName("TituloColumna")
-        self.header_label.setStyleSheet("")
 
         # Quitar stretch: colocamos los botones justo al lado del título (a la izquierda)
         header_layout.setSpacing(2)
@@ -525,14 +568,21 @@ class KanbanColumn(QFrame):
         desired_width = max(260, text_width + extra)
         self.setMinimumWidth(desired_width)
         # Evitar que el layout padre reduzca la columna: preferimos mantener el ancho mínimo
-        self.setSizePolicy(QSizePolicy.Fixed, QSizePolicy.Preferred)
+        self.setSizePolicy(QSizePolicy.Fixed, QSizePolicy.Expanding)
         
         self.scroll = QScrollArea()
         self.scroll.setWidgetResizable(True)
         self.scroll.setFrameShape(QFrame.NoFrame)
-        self.scroll.setStyleSheet("background: transparent;")
+        self.scroll.setStyleSheet("""
+            QScrollArea { background: transparent; border: none; }
+            QScrollArea > QWidget > QWidget { background: transparent; }
+        """)
+        self.scroll.viewport().setStyleSheet("background: transparent;")
+        self.scroll.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding)
         
         self.scroll_content = QWidget()
+        self.scroll_content.setObjectName("ScrollContent")
+        self.scroll_content.setStyleSheet("background: transparent;")
         self.scroll_layout = QVBoxLayout(self.scroll_content)
         self.scroll_layout.setAlignment(Qt.AlignTop)
         self.scroll_layout.setSpacing(10)
@@ -560,18 +610,30 @@ class KanbanColumn(QFrame):
         else: event.ignore()
 
     def crear_nueva_tarea(self):
-        titulo_columna = self.titulo
 
-        text, ok = QInputDialog.getText(self, "Nueva Tarea", f"Añadir a {titulo_columna}:")
-        if ok and text:
-            if hasattr(self.main_window, 'usuario') and self.main_window.usuario:
-                usuario_id = self.main_window.usuario.id
+        dlg = QInputDialog(self)
+        dlg.setWindowTitle("Nueva Tarea")
+        dlg.setLabelText(f"Añadir a {self.titulo}:")
+        dlg.setOkButtonText("Aceptar")
+        dlg.setCancelButtonText("Cancelar")
 
-                # Llama al manager para crear la tarea
-                if self.manager.crear_tarea(text, self.id_columna, usuario_id):
-                    self.main_window.distribuir_tareas()
-            else:
-                QMessageBox.critical(self, "Error", "No se ha identificado el usuario actual")
+        dlg.setStyleSheet("""
+            QInputDialog { background-color: #FAFAFA; border: 2px solid #D7CCC8; border-radius: 8px; }
+            QLabel { color: #3E2723; font-weight: bold; font-size: 14px; }
+            QLineEdit { background-color: #FFFFFF; color: #3E2723; border: 2px solid #D7CCC8; border-radius: 4px; padding: 5px; }
+            QPushButton { background-color: #EFEBE9; color: #3E2723; border: 1px solid #D7CCC8; padding: 5px 15px; border-radius: 4px; }
+            QPushButton:hover { background-color: #D7CCC8; }
+        """)
+
+        if dlg.exec_() == QDialog.Accepted:
+            text = dlg.textValue()
+            if text:
+                if hasattr(self.main_window, 'usuario') and self.main_window.usuario:
+                    usuario_id = self.main_window.usuario.id
+                    if self.manager.crear_tarea(text, self.id_columna, usuario_id):
+                        self.main_window.distribuir_tareas()
+                else:
+                    QMessageBox.critical(self, "Error", "No se ha identificado el usuario actual")
 
     def add_card_widget(self, card_widget):
         # Asegurar que la tarjeta no estire la columna: limitar su ancho al de la columna
@@ -590,38 +652,46 @@ class KanbanColumn(QFrame):
         super().resizeEvent(event)
 
     def pedir_editar_columna(self):
-        # Mostrar diálogo para editar el título de la columna
-        nuevo, ok = QInputDialog.getText(self, "Editar columna", "Nuevo título:", text=self.titulo)
-        if not ok:
-            return
-        nuevo = nuevo.strip()
-        if not nuevo:
-            QMessageBox.warning(self, "Nombre inválido", "El título no puede estar vacío.")
-            return
+        dlg = QInputDialog(self)
+        dlg.setWindowTitle("Editar columna")
+        dlg.setLabelText("Nuevo título:")
+        dlg.setTextValue(self.titulo)
+        dlg.setOkButtonText("Guardar")
+        dlg.setCancelButtonText("Cancelar")
 
-        if nuevo == self.titulo:
-            return
+        dlg.setStyleSheet("""
+            QInputDialog { background-color: #FAFAFA; border: 2px solid #D7CCC8; border-radius: 8px; }
+            QLabel { color: #3E2723; font-weight: bold; font-size: 14px; }
+            QLineEdit { background-color: #FFFFFF; color: #3E2723; border: 2px solid #D7CCC8; border-radius: 4px; padding: 5px; }
+            QPushButton { background-color: #EFEBE9; color: #3E2723; border: 1px solid #D7CCC8; padding: 5px 15px; border-radius: 4px; }
+            QPushButton:hover { background-color: #D7CCC8; }
+        """)
 
-        # Intentar actualizar en la BD
-        if self.manager.editar_columna(self.id_columna, nuevo):
-            # Actualizar visualmente
-            self.titulo = nuevo
-            safe = nuevo.replace('&', '&amp;').replace('<', '&lt;').replace('>', '&gt;')
-            self.header_label.setText(f'<div style="word-break:break-all; white-space:normal;">{safe}</div>')
-            # Recalcular anchura mínima en caso de cambio de título
-            fm = self.header_label.fontMetrics()
-            text_width = fm.horizontalAdvance(nuevo)
-            extra = self.btn_edit_col.width() or 44
-            extra += self.btn_delete_col.width() or 88
-            extra += 14 * 2 + 20
-            desired_width = max(260, text_width + extra)
-            self.setMinimumWidth(desired_width)
-            self.setSizePolicy(QSizePolicy.Fixed, QSizePolicy.Preferred)
-            # Notificar ventana principal para recargar si es necesario
-            if hasattr(self.main_window, 'recargar_tablero_completo'):
-                self.main_window.recargar_tablero_completo()
-        else:
-            QMessageBox.critical(self, "Error", "No se pudo actualizar el título en la base de datos.")
+        if dlg.exec_() == QDialog.Accepted:
+            nuevo = dlg.textValue().strip()
+            if not nuevo:
+                QMessageBox.warning(self, "Nombre inválido", "El título no puede estar vacío.")
+                return
+
+            if nuevo == self.titulo: return
+
+            if self.manager.editar_columna(self.id_columna, nuevo):
+                self.titulo = nuevo
+                safe = nuevo.replace('&', '&amp;').replace('<', '&lt;').replace('>', '&gt;')
+                self.header_label.setText(f'<div style="word-break:break-all; white-space:normal; font-weight:bold; font-size:16px; color:#4E342E;">{safe}</div>')
+                
+                fm = self.header_label.fontMetrics()
+                text_width = fm.horizontalAdvance(nuevo)
+                # Recalcula el ancho usando los objetos botón que ya existen
+                extra = self.btn_edit_col.width() + self.btn_delete_col.width() + 50
+                desired_width = max(260, text_width + extra)
+                self.setMinimumWidth(desired_width)
+                self.setSizePolicy(QSizePolicy.Fixed, QSizePolicy.Expanding)
+                
+                if hasattr(self.main_window, 'recargar_tablero_completo'):
+                    self.main_window.recargar_tablero_completo()
+            else:
+                QMessageBox.critical(self, "Error", "No se pudo actualizar el título en la base de datos.")
 
     def pedir_eliminar_columna(self):
         # Delegamos la confirmación y la eliminación a la ventana principal

@@ -1,5 +1,5 @@
 import os
-from PyQt5.QtWidgets import QMainWindow, QPushButton, QMessageBox, QInputDialog
+from PyQt5.QtWidgets import (QMainWindow, QPushButton, QMessageBox, QInputDialog, QScrollArea, QWidget, QHBoxLayout, QVBoxLayout)
 from PyQt5 import uic
 from PyQt5.QtCore import Qt
 from src.managers.task_manager import TaskManager
@@ -9,176 +9,135 @@ from src.views.admin_panel import AdminWindow
 
 # Estilo "Alaxa Brown"
 ESTILO_NORMAL = """
-QMainWindow { background-color: #FAFAFA; }
-QWidget { font-family: 'Segoe UI', sans-serif; font-size: 14px; color: #3E2723; }
-QFrame#TopBar { background-color: #4E342E; border-bottom: 3px solid #FFB74D; }
-QLabel#HeaderTitle { color: #FFFFFF; font-weight: bold; font-size: 20px; }
-QPushButton { border-radius: 4px; padding: 5px 15px; }
-
-/* --- COLUMNAS --- */
-/* Fondo gris claro y bordes suaves */
-QFrame#Columna {
-    background-color: #EFF1F3; 
-    border: 1px solid #D7CCC8; 
-    border-radius: 8px;
-    margin: 5px;
-}
-/* TÍTULO DE COLUMNA (Marrón Alaxa) */
-QLabel#TituloColumna {
-    font-weight: bold; 
-    font-size: 16px; 
-    color: #4E342E; 
-    padding: 5px;
+/* 1. CONTENEDORES PRINCIPALES (Solo lo que necesitamos pintar) */
+QMainWindow, QDialog { 
+    background-color: #FAFAFA; 
+    color: #3E2723;
 }
 
-/* Tarjetas (KanbanCard) */
-QFrame[class="tarjeta"] {
-    background-color: #FFFFFF; color: #3E2723; border: 1px solid #E0E0E0;
-}
-QFrame[class="tarjeta"] QLabel { background: transparent; }
-QFrame[class="tarjeta"]:hover { background-color: #FFF8E1; border: 1px solid #FFB74D; }
-
-/* BOTÓN AÑADIR TARJETA (Modo Normal) */
-QPushButton#btn_add_card {
-    background-color: transparent; 
-    color: #5D4037;
-    border-radius: 4px; 
-    padding: 8px; 
-    text-align: left;
-    border: none;
-}
-
-QPushButton#btn_add_card:hover { 
-    background-color: #D7CCC8; 
+/* 2. TEXTOS Y FUENTES (Aquí sí usamos QWidget solo para la letra) */
+QWidget { 
+    font-family: 'Segoe UI', sans-serif; 
+    font-size: 14px; 
     color: #3E2723; 
 }
 
-QPushButton#btn_add_column {
-    background-color: transparent; 
-    color: #FFFFFF; 
-    border: 1px solid #D7CCC8; 
-    padding: 6px; 
-    border-radius: 4px;
+/* 3. INPUTS Y ETIQUETAS ESPECÍFICOS */
+QLineEdit { 
+    background-color: #FFFFFF; 
+    border: 2px solid #D7CCC8; 
+    border-radius: 4px; 
+    padding: 5px; 
+    color: #3E2723; 
 }
-QPushButton#btn_add_column:hover {
-    background-color: #5D4037;
+QLabel {
+    color: #3E2723;
+    background: transparent;
 }
 
-QPushButton#btn_admin_panel {
-    background-color: #263238; 
-    color: white; 
-    font-weight: bold; 
-    border: 1px solid #455A64; 
-    border-radius: 4px; 
-    padding: 6px 12px; 
-    margin-right: 15px;
+/* 4. HEADER */
+QFrame#TopBar { background-color: #4E342E; border-bottom: 3px solid #FFB74D; }
+QLabel#HeaderTitle { color: #FFFFFF; font-weight: bold; font-size: 20px; }
+
+/* 5. COLUMNAS */
+/* Nota: El tamaño y forma están en widgets.py, aquí solo reforzamos el color */
+QFrame#Columna { 
+    background-color: #EFF1F3; 
+    border: 1px solid #D7CCC8; 
 }
-QPushButton#btn_admin_panel:hover {
-    background-color: #37474F;
-}
+QLabel#TituloColumna { font-weight: bold; font-size: 16px; color: #4E342E; padding: 5px; }
+
+/* 6. TARJETAS */
+QFrame[class="tarjeta"] { background-color: #FFFFFF; color: #3E2723; border: 1px solid #E0E0E0; border-radius: 6px; }
+QFrame[class="tarjeta"]:hover { background-color: #FFF8E1; border: 1px solid #FFB74D; }
+
+/* 7. BOTONES */
+QPushButton { border-radius: 4px; padding: 6px 15px; }
+QPushButton:hover { background-color: #D7CCC8; }
+
+QPushButton#btn_logout { background-color: transparent; border: 2px solid #FFB74D; color: #FFB74D; font-weight: bold; }
+QPushButton#btn_logout:hover { background-color: #FFB74D; color: #4E342E; }
+
+QPushButton#btn_accesibilidad { background-color: #FFB74D; color: #3E2723; font-weight: bold; border: none; padding: 8px 15px; min-height: 20px; margin-right: 5px; }
+
+QPushButton#btn_add_card { background-color: transparent; border: none; color: #5D4037; text-align: left; padding: 8px; }
+QPushButton#btn_add_card:hover { background-color: #D7CCC8; color: #3E2723; }
 """
 
-# Estilo alto contraste para mejor accesibilidad
 ESTILO_CONTRASTE = """
-/* --- GENERAL --- */
+/* Fondo NEGRO solo para ventanas principales, NO global */
 QMainWindow, QDialog { 
     background-color: #000000; 
+    color: #FFFF00; 
 }
 QWidget { 
-    font-family: 'Verdana', sans-serif; 
-    font-size: 14px; 
-    color: #FFFF00; /* Por defecto todo Amarillo */
+    font-family: 'Verdana'; 
     font-weight: bold; 
+    font-size: 14px;
+    color: #FFFF00;
 }
 
-/* --- HEADER SUPERIOR --- */
-QFrame#TopBar { 
+QFrame#TopBar { background-color: #000000; border-bottom: 4px solid #FFFF00; }
+QLabel#HeaderTitle { color: #FFFF00; font-size: 22px; text-decoration: underline; }
+
+QFrame#Columna { 
     background-color: #000000; 
-    border-bottom: 4px solid #FFFF00; 
+    border: 2px solid #FFFFFF; 
 }
-QLabel#HeaderTitle { 
-    color: #FFFF00; 
-    font-size: 22px; 
-    text-decoration: underline; 
-}
+QLabel#TituloColumna { color: #FFFFFF; font-size: 18px; border-bottom: 2px solid #333; }
 
-/* --- BOTONES DEL HEADER (Cerrar sesión, Panel, etc) --- */
-QPushButton { 
-    background-color: #000000; 
-    color: #FFFF00; 
-    border: 2px solid #FFFF00; 
-    border-radius: 0px; 
-    padding: 8px;
-}
-QPushButton:hover { 
-    background-color: #FFFF00; 
-    color: #000000; 
-}
+QFrame[class="tarjeta"] { background-color: #000000; color: #FFFF00; border: 2px solid #FFFF00; border-radius: 0px; margin-bottom: 10px; }
+QFrame[class="tarjeta"]:hover { border: 2px dashed #FFFFFF; }
 
-/* --- COLUMNAS (Cajas grandes) --- */
-QFrame#Columna {
-    background-color: #000000; 
-    border: 2px solid #FFFFFF; /* Borde BLANCO para separar columnas */
-    border-radius: 0px;
-    margin: 2px;
-}
+QLineEdit { background-color: #000000; color: #FFFF00; border: 2px solid #FFFF00; padding: 5px; }
+QPushButton { background-color: #000000; color: #FFFF00; border: 2px solid #FFFF00; padding: 8px 15px; border-radius: 0px; }
+QPushButton:hover { background-color: #333333; color: #FFFFFF; border-color: #FFFFFF; }
 
-/* --- TÍTULOS DE LAS COLUMNAS (PENDIENTE, ETC.) --- */
-/* ¡AQUÍ ESTABA EL FALLO! Forzamos blanco y quitamos el marrón */
-QLabel#TituloColumna {
-    color: #FFFFFF; 
-    font-size: 18px;
-    background-color: #000000;
-    padding: 10px;
-    border-bottom: 2px solid #333; /* Separador sutil */
-}
+QPushButton#btn_accesibilidad { background-color: #FFFF00; color: #000000; border: 2px solid #FFFFFF; min-height: 20px; padding: 8px 15px; margin-right: 5px; }
+QPushButton#btn_add_card { color: #FFFF00; border: 2px dashed #FFFF00; text-align: center; margin-top: 5px; }
 
-/* --- ÁREA DE SCROLL (FONDO) --- */
-QScrollArea {
-    background-color: #000000;
+QScrollArea, QScrollArea > QWidget > QWidget {
+    background-color: transparent;
     border: none;
 }
-QWidget {
-    background-color: #000000; 
+
+QScrollBar:vertical {
+    border: 1px solid #FFFF00;
+    background: #000000;
+    width: 10px;
 }
 
-/* --- BOTÓN "+ AÑADIR TARJETA" (Al pie de la columna) --- */
-/* Lo hacemos resaltar mucho más */
-QFrame#Columna QPushButton {
-    background-color: #000000;
-    color: #FFFF00; /* Texto Amarillo */
-    border: 2px dashed #FFFF00; /* Borde discontinuo "técnico" */
-    text-align: center;
-    padding: 10px;
-    margin-top: 5px;
-}
-QFrame#Columna QPushButton:hover {
-    background-color: #333333; /* Gris oscuro al pasar el ratón */
-    color: #FFFFFF;
+QScrollBar::handle:vertical {
+    background: #FFFF00;
+    min-height: 20px;
 }
 
-/* --- TARJETAS (KanbanCard) --- */
-QFrame[class="tarjeta"] {
-    background-color: #000000; 
-    color: #FFFF00; 
-    border: 2px solid #FFFF00; 
-    margin-bottom: 10px;
-    text-align: left;
+/* 1. MATAR EL BLANCO DE LOS SCROLLS */
+QScrollArea, QScrollArea QWidget, QScrollArea QWidget QWidget {
+    background-color: black; /* Fondo negro puro */
+    border: none;
 }
-QFrame[class="tarjeta"] QLabel { background: transparent; }
 
-/* BOTÓN AÑADIR TARJETA (Modo Alto Contraste) */
-QPushButton#btn_add_card {
-    background-color: #000000;
-    color: #FFFF00; /* Amarillo */
-    border: 2px dashed #FFFF00; /* Borde discontinuo para resaltar */
-    text-align: center; /* Centrado se lee mejor aquí */
-    padding: 10px;
-    margin-top: 5px;
+/* 2. ELIMINAR BARRA HORIZONTAL (La que te molestaba) */
+QScrollBar:horizontal {
+    height: 0px; 
+    background: transparent;
 }
-QPushButton#btn_add_card:hover {
-    background-color: #333333;
-    color: #FFFFFF;
+
+/* 3. BARRA VERTICAL ESTILO ALTO CONTRATE (Negro y Amarillo) */
+QScrollBar:vertical {
+    border: 1px solid #FFFF00;
+    background: #000000;
+    width: 12px;
+    margin: 0px;
+}
+QScrollBar::handle:vertical {
+    background: #FFFF00; /* Parte que se arrastra en amarillo */
+    min-height: 20px;
+}
+QScrollBar::add-line:vertical, QScrollBar::sub-line:vertical {
+    background: none; /* Elimina las flechitas blancas */
+    height: 0px;
 }
 """
 
@@ -212,7 +171,7 @@ class MainWindow(QMainWindow):
 
     def configurar_ui(self):
         # 1. Configuración básica (Logout y Título)
-        self.btn_logout.clicked.connect(self.close)
+        self.btn_logout.clicked.connect(self.cerrar_sesion)
         self.HeaderTitle.setText(f"AlaxaFlow - {self.rol.upper()}")
 
         # Botón para activar el modo alto contraste
@@ -220,7 +179,7 @@ class MainWindow(QMainWindow):
         self.btn_accesibilidad.setCursor(Qt.PointingHandCursor)
 
         # Estilo para que el botón destaque ligeramente
-        self.btn_accesibilidad.setStyleSheet("background-color: #FFB74D; color: #3E2723; font-weight: bold; border: none;")
+        self.btn_accesibilidad.setObjectName("btn_accesibilidad")
         self.btn_accesibilidad.clicked.connect(self.alternar_tema)
 
         # Inserta el botón en la parte superior a la izquierda de cerrar sesión
@@ -235,14 +194,11 @@ class MainWindow(QMainWindow):
         self.TopBar.layout().insertWidget(6, self.btn_add_column)
 
         # Botón Admin (Solo para admin y manager)
-        
-        # 2. LOGICA NUEVA: Botón del Panel de Admin
-        # Sustituimos el antiguo botón "Crear Usuario" por el botón "Panel Control"
         if self.rol in ['admin', 'manager']:
             self.btn_admin_panel = QPushButton(" 🛠️ Panel Control ")
             self.btn_admin_panel.setCursor(Qt.PointingHandCursor)
             
-            # Le damos un estilo oscuro para diferenciarlo
+            # Estilo oscuro para diferenciarlo
             self.btn_admin_panel.setStyleSheet("""
                 background-color: #263238; 
                 color: white; 
@@ -259,22 +215,60 @@ class MainWindow(QMainWindow):
             # Lo ponemos a la izquierda del todo (índice 0) o donde estaba el otro
             self.TopBar.layout().insertWidget(0, self.btn_admin_panel)
 
-        self.tablero_layout = self.contentArea.layout()
+        
+        # -- Lógica de scroll horizontal --
+        self.scroll_area = QScrollArea()
+
+        # Permite que el contenido crezca
+        self.scroll_area.setWidgetResizable(True)
+        self.scroll_area.setStyleSheet("background: transparent; border: none;")
+
+        # Crea un contenedor interno
+        self.contenedor_interno = QWidget()
+        self.contenedor_interno.setStyleSheet("background: transparent;")
+
+        # Layout horizontal dentro del scroll
+        self.tablero_layout = QHBoxLayout(self.contenedor_interno)
+        self.tablero_layout.setSpacing(15)
+        self.tablero_layout.setContentsMargins(10, 10, 10, 10)
+
+        # Conecta el contenedor al ScrollArea
+        self.scroll_area.setWidget(self.contenedor_interno)
+
+        # Añade el scroll area al layout principal de la ventana
+        if not self.contentArea.layout():
+            layout_padre = QVBoxLayout(self.contentArea)
+        else:
+            layout_padre = self.contentArea.layout()
+
+        while layout_padre.count():
+            child = layout_padre.takeAt(0)
+            if child.widget():
+                child.widget().deleteLater()
+            
+        layout_padre.addWidget(self.scroll_area)
+
+    # Método para cerrar sesión
+    def cerrar_sesion(self):
+        auth = AuthManager()
+
+        # Borra el archivo de la sesión local
+        auth.borrar_sesion_local()
+        print("Sesión cerrada y archivo local eliminado.")
+        self.close()
 
     def alternar_tema(self):
         if self.tema_actual == "normal":
             # Cambia al estilo de Alto Contraste
             self.setStyleSheet(ESTILO_CONTRASTE)
             self.tema_actual = "contraste"
-            self.btn_accesibilidad.setText("🎨 Estilo Normal")
-            self.btn_accesibilidad.setStyleSheet("background-color: #FFFF00; color: #000000; border: 2px solid white;")
+            self.btn_accesibilidad.setText("🎨 Estilo Normal")   
         else:
             # Vuelve al estilo normal 
             self.setStyleSheet(ESTILO_NORMAL)
             self.tema_actual = "normal"
             self.btn_accesibilidad.setText("👁️ Alto Contraste")
-            self.btn_accesibilidad.setStyleSheet("background-color: #FFB74D; color: #3E2723; font-weight: bold; border: none;")
-
+            
         # Actualiza el estilo de las tarjetas, recorriendo las columnas y layouts
         if hasattr(self, 'cols_widgets'):
             for col_widget in self.cols_widgets.values():
@@ -300,7 +294,14 @@ class MainWindow(QMainWindow):
         # Limpia visualmente el tablero
         while self.tablero_layout.count():
             item = self.tablero_layout.takeAt(0)
-            if item.widget(): item.widget().deleteLater()
+            if item.widget(): 
+                item.widget().deleteLater()
+            elif item.spacerItem():
+                del item
+
+
+        # Espaciado entre columnas
+        self.tablero_layout.setSpacing(15)
         
         self.cols_widgets = {} # Diccionario ID_UUID -> WidgetColumna
 
@@ -314,10 +315,13 @@ class MainWindow(QMainWindow):
             
             # Crea el widget pasándole el UUID
             nuevo_widget = KanbanColumn(col_uuid, col_titulo, self.task_manager, self)
+            # Añade la columna al layout
             self.tablero_layout.addWidget(nuevo_widget)
-            
+
             # Guardamos referencia
             self.cols_widgets[col_uuid] = nuevo_widget
+
+        self.tablero_layout.addStretch()
 
         # Carga las tareas
         self.distribuir_tareas()
@@ -331,12 +335,25 @@ class MainWindow(QMainWindow):
 
         # Obtiene las tareas del tablero actual por su id
         tareas = self.task_manager.obtener_tareas_por_tablero(self.tablero_actual['id'])
+
+        # Carga el mapa de usuarios para asignaciones
+        usuarios_lista = self.task_manager.obtener_todos_usuarios()
+        mapa_usuarios = {}
+        if usuarios_lista:
+            for u in usuarios_lista:
+                # Crea string "Nombre (email)"
+                nombre_mostrar = f"{u.get('nombre', 'Usuario')} ({u.get('email')})"
+                mapa_usuarios[u['id']] = nombre_mostrar
         
         for t in tareas:
             col_id = t['columna_id'] # Esto es un UUID en la bd
-            
+
+            # Obtiene el nombre del usuario asignado si lo hay
+            uuid_asignado = t.get('asignado_a')
+            nombre_str = mapa_usuarios.get(uuid_asignado) if uuid_asignado else None
+
             # Crea la tarjeta
-            card = KanbanCard(t['id'], t['titulo'], self.rol, self.task_manager)
+            card = KanbanCard(t['id'], t['titulo'], self.rol, self.task_manager, nombre_asignado=nombre_str)
             
             # Conecta las señales
             card.request_delete.connect(self.eliminar_tarea_directa)
@@ -384,21 +401,33 @@ class MainWindow(QMainWindow):
             QMessageBox.critical(self, "Error", "Fallo al registrar en Supabase.")
 
     def agregar_columna(self):
-        # Pide el título de la nueva columna y la crea en la BD
-        titulo, ok = QInputDialog.getText(self, "Nueva Columna", "Título de la columna:")
-        if not ok or not titulo:
-            return
+        dlg = QInputDialog(self)
+        dlg.setWindowTitle("Nueva Columna")
+        dlg.setLabelText("Título de la columna:")
+        dlg.setOkButtonText("Crear")
+        dlg.setCancelButtonText("Cancelar")
 
-        if not self.tablero_actual:
-            QMessageBox.critical(self, "Error", "No hay tablero activo.")
-            return
+        dlg.setStyleSheet("""
+            QInputDialog { background-color: #FAFAFA; border: 2px solid #D7CCC8; border-radius: 8px; }
+            QLabel { color: #3E2723; font-weight: bold; font-size: 14px; }
+            QLineEdit { background-color: #FFFFFF; color: #3E2723; border: 2px solid #D7CCC8; border-radius: 4px; padding: 5px; }
+            QPushButton { background-color: #EFEBE9; color: #3E2723; border: 1px solid #D7CCC8; padding: 5px 15px; border-radius: 4px; }
+            QPushButton:hover { background-color: #D7CCC8; }
+        """)
 
-        creado = self.task_manager.crear_columna(self.tablero_actual['id'], titulo)
-        if creado:
-            # Recargamos el tablero para mostrar la nueva columna
-            self.recargar_tablero_completo()
-        else:
-            QMessageBox.critical(self, "Error", "No se pudo crear la columna en la base de datos.")
+        if dlg.exec_() == QDialog.Accepted:
+            titulo = dlg.textValue()
+            if not titulo: return
+
+            if not self.tablero_actual:
+                QMessageBox.critical(self, "Error", "No hay tablero activo.")
+                return
+
+            creado = self.task_manager.crear_columna(self.tablero_actual['id'], titulo)
+            if creado:
+                self.recargar_tablero_completo()
+            else:
+                QMessageBox.critical(self, "Error", "No se pudo crear la columna en la base de datos.")
 
     def solicitar_eliminar_columna(self, columna_id, titulo_columna=None):
         # Comprueba si la columna tiene tareas y pide confirmación si es necesario
