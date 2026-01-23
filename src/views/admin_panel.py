@@ -2,7 +2,7 @@ import os
 from PyQt5.QtWidgets import (QMainWindow, QTableWidgetItem, QHeaderView, 
                              QDialog, QFormLayout, QLineEdit, QComboBox, 
                              QPushButton, QMessageBox, QWidget, QVBoxLayout, 
-                             QHBoxLayout, QTableWidget, QAbstractItemView, QMenu, QAction)
+                             QHBoxLayout, QTableWidget, QAbstractItemView, QMenu, QAction, QListWidget, QLabel)
 from PyQt5 import uic
 from PyQt5.QtCore import Qt
 from src.managers.task_manager import TaskManager
@@ -34,6 +34,7 @@ class AdminWindow(QMainWindow):
     def setup_tables(self):
         # Ajustar ancho de columnas para que se vean bonitas
         self.table_users.horizontalHeader().setSectionResizeMode(QHeaderView.Stretch)
+        self.table_users.setColumnHidden(2, True) # Ocultar Apellidos (sobra)
         self.table_boards.horizontalHeader().setSectionResizeMode(QHeaderView.Stretch)
 
     def conectar_botones(self):
@@ -135,7 +136,9 @@ class AdminWindow(QMainWindow):
         rol.addItems(roles_permitidos) 
 
         combo_dept = QComboBox()
-        combo_dept.addItem("Cargar departamentos...", None) 
+        combo_dept.addItem("Seleccionar departamento...", None) 
+        combo_equipo = QComboBox()
+        combo_equipo.addItem("Seleccionar equipo...", None) 
 
         # Logica para cargar departamentos desde la BD
         try:
@@ -144,34 +147,80 @@ class AdminWindow(QMainWindow):
             if res.data:
                 for dep in res.data:
                     combo_dept.addItem(dep['nombre'], dep['id'])
-            else:
-                combo_dept.addItem("No hay departamentos", None)
         except Exception as e:
-            combo_dept.clear()
-            combo_dept.addItem("Error de conexión", None)
+            pass
 
+        # Logica cargar equipos (se podria filtrar por departamento mas adelante si se desea)
+        # Por simplicidad cargamos todos, podriamos implementar filtro dinamico en update_ui_state tambien
         combo_equipo = QComboBox()
         combo_equipo.addItem("Sin equipo (Opcional)", None)
 
-        # Logica cargar equipos
+        # Logica cargar equipos 
+        equipos_data = [] # Lista temporal para filtrar
         try:
-            res_eq = db.client.table('equipos').select('id, nombre, lider_id').execute()
+            res_eq = db.client.table('equipos').select('id, nombre, departamento_id').execute()
             if res_eq.data:
-                for eq in res_eq.data:
-                    # Guardamos el lider_id tambien en la data como tupla o dict si hiciera falta, 
-                    # pero aqui solo el ID del equipo. Consultaremos lider luego.
-                    combo_equipo.addItem(eq['nombre'], eq['id'])
+                equipos_data = res_eq.data
         except Exception:
             pass
 
+        # Labels para controlar visibilidad
+        lbl_dept = QLabel("Departamento:")
+        lbl_equipo = QLabel("Equipo:")
+        
         # Filas del formulario
         layout.addRow("Nombre:", nombre)
         layout.addRow("Apellidos:", apellidos)
         layout.addRow("Email (Usuario):", email)
         layout.addRow("Contraseña:", pwd)
-        layout.addRow("Departamento:", combo_dept)
         layout.addRow("Rol:", rol)
-        layout.addRow("Equipo:", combo_equipo)
+        layout.addRow(lbl_dept, combo_dept)
+        layout.addRow(lbl_equipo, combo_equipo)
+        
+        def filtrar_equipos():
+            dept_id = combo_dept.currentData()
+            combo_equipo.clear()
+            # Siempre opción por defecto (especialmente util para roles que no requieren equipo o previo a seleccionar)
+            # Pero logica de negocio dice Lider/Trabajador requires equipo. 
+            # Dejamos "Seleccionar equipo..." como placeholder.
+            combo_equipo.addItem("Seleccionar equipo...", None)
+            
+            if not dept_id:
+                return
+
+            for eq in equipos_data:
+                # Filtrar por departamento
+                if eq.get('departamento_id') == dept_id:
+                    combo_equipo.addItem(eq['nombre'], eq['id'])
+
+        # Conectar cambios
+        combo_dept.currentIndexChanged.connect(filtrar_equipos)
+
+        def update_ui_state():
+            r = rol.currentText()
+            # Admin: No dept, no team
+            # Manager: Dept, no team
+            # Lider/Trabajador: Dept, Team
+            
+            if r == 'admin':
+                lbl_dept.hide()
+                combo_dept.hide()
+                lbl_equipo.hide()
+                combo_equipo.hide()
+            elif r == 'manager':
+                lbl_dept.show()
+                combo_dept.show()
+                lbl_equipo.hide()
+                combo_equipo.hide()
+            else:
+                lbl_dept.show()
+                combo_dept.show()
+                lbl_equipo.show()
+                combo_equipo.show()
+                
+        rol.currentIndexChanged.connect(update_ui_state)
+        update_ui_state() # estado inicial UI roles
+        filtrar_equipos() # estado inicial Equipos (vacío o dept default)
         
         # Botone de acción
         btn = QPushButton("Registrar Empleado")
@@ -188,12 +237,23 @@ class AdminWindow(QMainWindow):
                 return
             
             dep_id = combo_dept.currentData()
-            if not dep_id:
-                QMessageBox.warning(self, "Error", "Debes seleccionar un departamento.")
-                return
-            
             equipo_id = combo_equipo.currentData()
             rol_elegido = rol.currentText()
+
+            # Validaciones por Rol (UI Rules)
+            # Manager: Requiere Dept
+            if rol_elegido == 'manager':
+                if not dep_id:
+                    QMessageBox.warning(self, "Error", "El rol Manager requiere seleccionar un Departamento.")
+                    return
+            # Lider/Trabajador: Requiere Dept y Equipo
+            elif rol_elegido in ['lider_equipo', 'trabajador']:
+                if not dep_id:
+                     QMessageBox.warning(self, "Error", "Este rol requiere seleccionar un Departamento.")
+                     return
+                if not equipo_id:
+                     QMessageBox.warning(self, "Error", "Este rol requiere seleccionar un Equipo.")
+                     return
             
             # --- LOGICA DE CONFLICTO LIDER ---
             if equipo_id and rol_elegido == 'lider_equipo':
@@ -209,7 +269,12 @@ class AdminWindow(QMainWindow):
                         
                         if reply == QMessageBox.Yes:
                             # Democion del lider actual
-                            db.client.table('perfiles').update({'nivel_acceso': 'trabajador'}).eq('id', lider_actual_id).execute()
+                            # REFACTOR: Usar metodo manager para mover de tabla
+                            if hasattr(self, 'task_manager'):
+                                self.task_manager._mover_usuario_de_tabla(lider_actual_id, 'trabajador')
+                            else:
+                                # Fallback si no tenemos referencia (rara vez)
+                                print("Error: No task_manager ref")
                             # (Opcional) Le quitamos el equipo? No, lo dejamos como miembro normal (trabajador) del mismo equipo.
                         else:
                             # Cancelar operacion
@@ -284,8 +349,8 @@ class AdminWindow(QMainWindow):
         elif self.usuario and hasattr(self.usuario, 'nivel_acceso'):
             rol_actual = self.usuario.nivel_acceso
 
-        # 1. Pestaña DEPARTAMENTOS (Solo Admin y Manager)
-        if rol_actual in ['admin', 'manager']:
+        # 1. Pestaña DEPARTAMENTOS (Solo Admin)
+        if rol_actual == 'admin':
             self.tab_dept = QWidget()
             self.tabWidget.addTab(self.tab_dept, "🏢 Gestión Departamentos")
             self.construir_tab_departamentos()
@@ -327,6 +392,8 @@ class AdminWindow(QMainWindow):
         # Menu contextual para borrar
         self.table_depts.setContextMenuPolicy(Qt.CustomContextMenu)
         self.table_depts.customContextMenuRequested.connect(self.menu_contextual_dept)
+        # Doble clic para editar
+        self.table_depts.itemDoubleClicked.connect(self.abrir_detalle_departamento)
         
         layout.addWidget(self.table_depts)
         self.cargar_departamentos()
@@ -353,8 +420,8 @@ class AdminWindow(QMainWindow):
 
         # Tabla
         self.table_teams = QTableWidget()
-        self.table_teams.setColumnCount(4)
-        self.table_teams.setHorizontalHeaderLabels(["ID", "Nombre", "Departamento", "Líder (ID)"])
+        self.table_teams.setColumnCount(5) # ID, Nombre, Dept, Lider, Manager
+        self.table_teams.setHorizontalHeaderLabels(["ID", "Nombre", "Departamento", "Líder (ID)", "Manager (ID)"])
         self.table_teams.horizontalHeader().setSectionResizeMode(QHeaderView.Stretch)
         self.table_teams.setSelectionBehavior(QAbstractItemView.SelectRows)
         self.table_teams.setEditTriggers(QAbstractItemView.NoEditTriggers)
@@ -363,6 +430,8 @@ class AdminWindow(QMainWindow):
         # Menu contextual para borrar
         self.table_teams.setContextMenuPolicy(Qt.CustomContextMenu)
         self.table_teams.customContextMenuRequested.connect(self.menu_contextual_equipo)
+        # Doble clic para editar
+        self.table_teams.itemDoubleClicked.connect(self.abrir_detalle_equipo)
 
         layout.addWidget(self.table_teams)
         self.cargar_equipos()
@@ -420,12 +489,185 @@ class AdminWindow(QMainWindow):
             else:
                 QMessageBox.critical(self, "Error", "No se pudo borrar (puede tener usuarios asignados).")
 
+    def abrir_detalle_departamento(self, item):
+        row = item.row()
+        id_dept = self.table_depts.item(row, 0).text()
+        nombre_actual = self.table_depts.item(row, 1).text()
+        desc_actual = self.table_depts.item(row, 2).text()
+        
+        dialog = QDialog(self)
+        dialog.setWindowTitle(f"Editar Departamento: {nombre_actual}")
+        dialog.setFixedWidth(400)
+        layout = QVBoxLayout(dialog)
+        
+        form_layout = QFormLayout()
+        nombre_edit = QLineEdit(nombre_actual)
+        desc_edit = QLineEdit(desc_actual)
+        form_layout.addRow("Nombre:", nombre_edit)
+        form_layout.addRow("Descripción:", desc_edit)
+        layout.addLayout(form_layout)
+        
+        # Lista de Managers
+        layout.addWidget(QLabel("<b>Managers actuales:</b>"))
+        list_managers = QListWidget()
+        list_managers.setFixedHeight(100)
+        
+        def refresh_managers_list():
+            list_managers.clear()
+            # Cargar managers de este depto
+            users = self.task_manager.obtener_todos_usuarios()
+            managers_dept = [u for u in users if u['nivel_acceso'] == 'manager' and str(u.get('departamento_id')) == str(id_dept)]
+            
+            if not managers_dept:
+                list_managers.addItem("No hay managers asignados")
+            else:
+                for m in managers_dept:
+                    list_managers.addItem(f"{m['email']} ({m.get('nombre', '')} {m.get('apellidos', '')})")
+        
+        refresh_managers_list()
+        layout.addWidget(list_managers)
+        
+        # Boton Promover Manager
+        btn_promover = QPushButton("Añadir Manager al Departamento")
+        btn_promover.setStyleSheet("background-color: #2196F3; color: white;")
+        
+        def open_promote_dialog():
+            self.promover_manager_dialog(id_dept)
+            refresh_managers_list()
+            
+        btn_promover.clicked.connect(open_promote_dialog)
+        layout.addWidget(btn_promover)
+        
+        btn_save = QPushButton("Guardar Cambios")
+        btn_save.setStyleSheet("background: #4CAF50; color: white;")
+        btn_save.clicked.connect(dialog.accept)
+        layout.addWidget(btn_save)
+        
+        if dialog.exec_():
+            if self.task_manager.editar_departamento(id_dept, nombre_edit.text(), desc_edit.text()):
+                self.cargar_departamentos()
+                QMessageBox.information(self, "Éxito", "Departamento actualizado.")
+            else:
+                QMessageBox.critical(self, "Error", "Error al actualizar departamento.")
+
+    def promover_manager_dialog(self, dept_id):
+        # Dialogo para seleccionar un usuario y hacerlo manager de este departamento
+        d = QDialog(self)
+        d.setWindowTitle("Promover a Manager")
+        l = QVBoxLayout(d)
+        l.addWidget(QLabel("Selecciona un empleado del departamento para ascender:"))
+        
+        combo = QComboBox()
+        users = self.task_manager.obtener_todos_usuarios()
+        
+        # Filtrar: solo lideres o trabajadores DEL DEPARTAMENTO
+        candidatos = []
+        for u in users:
+            if str(u.get('departamento_id')) == str(dept_id) and u['nivel_acceso'] in ['trabajador', 'lider_equipo']:
+                 candidatos.append(u)
+                 combo.addItem(f"{u['email']} ({u['nivel_acceso']})", u['id'])
+        
+        if not candidatos:
+            combo.addItem("No hay candidatos elegibles en este departamento", None)
+            
+        l.addWidget(combo)
+        btn = QPushButton("Promover")
+        
+        def realizar_promocion():
+            user_id = combo.currentData()
+            if not user_id: return
+            
+            # Verificar si es lider de algun equipo
+            # Necesitamos consultar equipos. Ojo, un usuario podria ser lider de varios (teoricamente)
+            # Simplificamos asumiendo 1.
+            equipos = self.task_manager.obtener_equipos() # Seria mejor query filtrada pero vale
+            equipos_liderados = [eq for eq in equipos if str(eq.get('lider_id')) == str(user_id)]
+            
+            for eq in equipos_liderados:
+                msg = f"El usuario es actualmente líder del equipo '{eq['nombre']}'.\nEl puesto quedará vacante.\n¿Deseas seleccionar un sustituto ahora?"
+                reply = QMessageBox.question(d, "Vacante de Líder", msg, QMessageBox.Yes | QMessageBox.No)
+                
+                if reply == QMessageBox.Yes:
+                    # Dialogo anidado para sustituto
+                    self.seleccionar_sustituto_lider(eq, dept_id, user_id)
+
+            if self.task_manager.promover_a_manager(user_id, dept_id):
+                QMessageBox.information(d, "Éxito", "Usuario promovido a Manager.")
+                self.cargar_usuarios() 
+                d.accept()
+            else:
+                QMessageBox.critical(d, "Error", "Fallo al promover usuario.")
+
+        btn.clicked.connect(realizar_promocion)
+        l.addWidget(btn)
+        d.exec_()
+
+    def seleccionar_sustituto_lider(self, equipo, dept_id, old_lider_id):
+        # Dialogo para elegir nuevo lider para el equipo dado
+        # Filtro: trabajadores del mismo departamento
+        sd = QDialog(self)
+        sd.setWindowTitle(f"Sustituto para: {equipo['nombre']}")
+        sl = QVBoxLayout(sd)
+        sl.addWidget(QLabel(f"Selecciona nuevo líder para '{equipo['nombre']}':"))
+        
+        s_combo = QComboBox()
+        users = self.task_manager.obtener_todos_usuarios()
+        
+        count = 0
+        for u in users:
+            # No puede ser el que estamos promoviendo (old_lider_id)
+            # Debe ser trabajador del depto
+            if str(u.get('id')) != str(old_lider_id) and \
+               str(u.get('departamento_id')) == str(dept_id) and \
+               u['nivel_acceso'] == 'trabajador':
+                   s_combo.addItem(f"{u['email']}", u['id'])
+                   count += 1
+        
+        if count == 0:
+            s_combo.addItem("No hay sustitutos disponibles", None)
+        
+        sl.addWidget(s_combo)
+        s_btn = QPushButton("Asignar Nuevo Líder")
+        s_btn.clicked.connect(sd.accept)
+        sl.addWidget(s_btn)
+        
+        if sd.exec_():
+            new_lider_id = s_combo.currentData()
+            if new_lider_id:
+                # Update equipo with new lider
+                # Update new lider profile to 'lider_equipo' (auto handled by editar_equipologic?)
+                # No, llamamos a editar_equipo o update directo. 
+                # El task_manager.editar_equipo hace auto-promote.
+                # Pero necesitamos mantener el resto de datos del equipo.
+                try:
+                    self.task_manager.editar_equipo(
+                        equipo['id'], 
+                        equipo['nombre'], 
+                        equipo['departamento_id'], 
+                        new_lider_id, 
+                        equipo.get('manager_id'), 
+                        equipo.get('descripcion')
+                    )
+                except Exception as e:
+                    print(f"Error asignando sustituto: {e}")
+            else:
+                # Si no selecciona nadie, el equipo se queda sin lider?
+                # O mantenemos el anterior (que ahora es manager)? 
+                # El requisito dice "se quedara vacio". Asi que update lider_id = None
+                 try:
+                    db.client.table('equipos').update({'lider_id': None}).eq('id', equipo['id']).execute()
+                 except: pass
+
     # --- LOGICA EQUIPOS ---
     def cargar_equipos(self):
         data = self.task_manager.obtener_equipos()
         # Necesitamos mapa de departamentos para mostrar nombres
         depts = self.task_manager.obtener_departamentos()
         dept_map = {d['id']: d['nombre'] for d in depts}
+        
+        # Mapa de nombres de usuarios para Lider y Manager
+        users = self.task_manager.obtener_todos_usuarios()
+        user_map = {u['id']: u['email'] for u in users}
 
         self.table_teams.setRowCount(0)
         self.table_teams.setRowCount(len(data))
@@ -434,11 +676,16 @@ class AdminWindow(QMainWindow):
             self.table_teams.setItem(row, 1, QTableWidgetItem(t.get('nombre', '')))
             
             d_id = t.get('departamento_id')
-            d_name = dept_map.get(d_id, d_id)
+            d_name = dept_map.get(d_id, str(d_id))
             self.table_teams.setItem(row, 2, QTableWidgetItem(str(d_name)))
             
-            l_id = t.get('lider_id', 'Sin Líder')
-            self.table_teams.setItem(row, 3, QTableWidgetItem(str(l_id)))
+            l_id = t.get('lider_id')
+            l_name = user_map.get(l_id, "Sin Líder") if l_id else "Sin Líder"
+            self.table_teams.setItem(row, 3, QTableWidgetItem(l_name))
+            
+            m_id = t.get('manager_id')
+            m_name = user_map.get(m_id, "Sin Manager") if m_id else "Sin Manager"
+            self.table_teams.setItem(row, 4, QTableWidgetItem(m_name))
 
     def crear_equipo_dialog(self):
         dialog = QDialog(self)
@@ -454,18 +701,60 @@ class AdminWindow(QMainWindow):
             combo_d.addItem(d['nombre'], d['id'])
             
         combo_l = QComboBox()
-        combo_l.addItem("Sin líder inicialmente", None)
-        # Podriamos cargar usuarios candidatos a lider, pero por simplicidad dejaremos asignar luego 
-        # o cargar todos los usuarios.
+        # Se cargara dinamicamente al cambiar de departamento
+        
+        combo_m = QComboBox()
+        
+        # Logica: si soy admin, elijo manager. Si soy manager, me asigno yo.
+        rol_actual = 'trabajador'
+        if self.parent_window and hasattr(self.parent_window, 'rol'):
+            rol_actual = self.parent_window.rol
+        elif self.usuario and hasattr(self.usuario, 'nivel_acceso'):
+            rol_actual = self.usuario.nivel_acceso
+            
         users = self.task_manager.obtener_todos_usuarios()
-        for u in users:
-            # Solo mostramos lideres potenciales? Dejemos a todos por flexibilidad
-            combo_l.addItem(f"{u['email']} ({u['nivel_acceso']})", u['id'])
+        
+        # Llenar Combo Manager (Solo visible para Admin)
+        if rol_actual == 'admin':
+             combo_m.addItem("Sin manager asignado", None)
+             for u in users:
+                 if u['nivel_acceso'] in ['manager', 'admin']:
+                     combo_m.addItem(f"{u['email']} ({u['nivel_acceso']})", u['id'])
+        else:
+             # Si no soy admin (soy manager), el combo no se muestra o queda deshabilitado
+             # Ocultaremos el widget en el layout mas abajo
+             pass
+
+        # Funcion para filtrar lideres del departamento seleccionado
+        def actualizar_lideres():
+             dept_id = combo_d.currentData()
+             combo_l.clear()
+             combo_l.addItem("Sin líder inicialmente", None)
+             
+             if not dept_id: return
+             
+             for u in users:
+                 # Filtro: debe ser 'trabajador' y pertenecer al departamento
+                 # (Opcional: permitir tambien a quien ya sea lider_equipo pero no tenga equipo? 
+                 #  Por ahora estricto: trabajador del dpto)
+                 u_dept = u.get('departamento_id')
+                 u_rol = u.get('nivel_acceso')
+                 
+                 # NOTA: u_dept puede ser string o int, asegurar comparacion
+                 if str(u_dept) == str(dept_id) and u_rol == 'trabajador':
+                      combo_l.addItem(f"{u['email']}", u['id'])
+
+        combo_d.currentIndexChanged.connect(actualizar_lideres)
+        # Llamada inicial
+        actualizar_lideres()
 
         layout.addRow("Nombre:", nombre)
         layout.addRow("Descripción:", desc)
         layout.addRow("Departamento:", combo_d)
         layout.addRow("Líder Inicial:", combo_l)
+        
+        if rol_actual == 'admin':
+            layout.addRow("Manager Responsable:", combo_m)
         
         btn = QPushButton("Crear")
         btn.clicked.connect(dialog.accept)
@@ -476,7 +765,15 @@ class AdminWindow(QMainWindow):
             d_id = combo_d.currentData()
             l_id = combo_l.currentData()
             
-            if self.task_manager.crear_equipo(nombre.text(), d_id, l_id, desc.text()):
+            m_id = None
+            if rol_actual == 'admin':
+                m_id = combo_m.currentData()
+            elif rol_actual == 'manager':
+                # Autoasignar self.usuario.id
+                if self.usuario and hasattr(self.usuario, 'id'):
+                     m_id = self.usuario.id
+            
+            if self.task_manager.crear_equipo(nombre.text(), d_id, l_id, desc.text(), m_id):
                 self.cargar_equipos()
                 QMessageBox.information(self, "Éxito", "Equipo creado.")
             else:
@@ -500,3 +797,135 @@ class AdminWindow(QMainWindow):
                 self.cargar_equipos()
             else:
                 QMessageBox.critical(self, "Error", "No se pudo borrar (puede tener usuarios asignados).")
+
+    def abrir_detalle_equipo(self, item):
+        row = item.row()
+        id_eq = self.table_teams.item(row, 0).text()
+        try:
+            res = db.client.table('equipos').select('*').eq('id', id_eq).single().execute()
+            eq_data = res.data
+        except:
+             QMessageBox.critical(self, "Error", "No se pudo cargar info del equipo")
+             return
+
+        dialog = QDialog(self)
+        dialog.setWindowTitle(f"Editar Equipo: {eq_data['nombre']}")
+        dialog.setFixedWidth(400)
+        layout = QFormLayout(dialog)
+        
+        nombre = QLineEdit(eq_data['nombre'])
+        desc = QLineEdit(eq_data.get('descripcion', ''))
+        
+        combo_d = QComboBox()
+        depts = self.task_manager.obtener_departamentos()
+        idx_d = 0
+        current_dept_id = eq_data.get('departamento_id')
+        for i, d in enumerate(depts):
+            combo_d.addItem(d['nombre'], d['id'])
+            if str(d['id']) == str(current_dept_id):
+                idx_d = i
+        combo_d.setCurrentIndex(idx_d)
+
+        # Lider
+        combo_l = QComboBox()
+        
+        # Manager
+        combo_m = QComboBox()
+        
+        users = self.task_manager.obtener_todos_usuarios()
+        current_lider_id = eq_data.get('lider_id')
+        current_manager_id = eq_data.get('manager_id')
+
+        # Rol actual admin?
+        rol_actual = 'trabajador'
+        if self.parent_window and hasattr(self.parent_window, 'rol'):
+            rol_actual = self.parent_window.rol
+        elif self.usuario and hasattr(self.usuario, 'nivel_acceso'):
+            rol_actual = self.usuario.nivel_acceso
+
+        if rol_actual == 'admin':
+             combo_m.addItem("Sin Manager", None)
+             idx_m = 0
+             count_m = 1
+             for u in users:
+                 if u['nivel_acceso'] in ['manager', 'admin']: 
+                     combo_m.addItem(f"{u['email']} ({u['nivel_acceso']})", u['id'])
+                     if str(u['id']) == str(current_manager_id):
+                         idx_m = count_m
+                     count_m += 1
+             combo_m.setCurrentIndex(idx_m)
+        
+        def actualizar_lideres_edit():
+             # Guardar seleccion actual si es posible preservarla? 
+             # Es dificil pq la lista cambia. Solo preseleccionamos si coincide con el lider actual del equipo (si no ha cambiado dept)
+             # O si estamos editando, el lider actual DEBE salir aunque ya no cumpla las condiciones?
+             # Vamos a permitir que salga el lider actual + trabajadores del dpto seleccionado.
+             selected_dept = combo_d.currentData()
+             
+             combo_l.clear()
+             combo_l.addItem("Sin Líder", None)
+             
+             idx_l = 0
+             count_l = 1
+             
+             for u in users:
+                 u_id = u['id']
+                 u_dept = u.get('departamento_id')
+                 u_rol = u.get('nivel_acceso')
+                 
+                 es_lider_actual = (str(u_id) == str(current_lider_id))
+                 es_trabajador_del_dept = (str(u_dept) == str(selected_dept) and u_rol == 'trabajador')
+                 
+                 if es_lider_actual or es_trabajador_del_dept:
+                      combo_l.addItem(f"{u['email']}", u_id)
+                      if es_lider_actual:
+                          idx_l = count_l
+                      count_l += 1
+             
+             combo_l.setCurrentIndex(idx_l)
+
+        combo_d.currentIndexChanged.connect(actualizar_lideres_edit)
+        actualizar_lideres_edit() # Init
+        
+        layout.addRow("Nombre:", nombre)
+        layout.addRow("Descripción:", desc)
+        layout.addRow("Departamento:", combo_d)
+        layout.addRow("Líder:", combo_l)
+        
+        if rol_actual == 'admin':
+            layout.addRow("Manager:", combo_m)
+        
+        btn = QPushButton("Guardar Cambios")
+        btn.clicked.connect(dialog.accept)
+        layout.addRow(btn)
+        
+        if dialog.exec_():
+            new_lider_id = combo_l.currentData()
+            
+            # Conflicto Lider en Edicion
+            # Si cambiamos de lider y habia uno anterior
+            if new_lider_id and current_lider_id and new_lider_id != current_lider_id:
+                   msg = "Has cambiado el líder del equipo.\n¿Deseas cambiar el rol del líder ANTERIOR a 'trabajador'?"
+                   reply = QMessageBox.question(self, "Líder anterior", msg, QMessageBox.Yes | QMessageBox.No)
+                   if reply == QMessageBox.Yes:
+                       try:
+                           # REFACTOR: Usar TaskManager
+                           if hasattr(self, 'task_manager'):
+                               self.task_manager._mover_usuario_de_tabla(current_lider_id, 'trabajador')
+                       except Exception as e:
+                           print(f"Error al democionar lider anterior: {e}")
+            
+            # Determinar manager_id final
+            m_id_final = current_manager_id
+            if rol_actual == 'admin':
+                m_id_final = combo_m.currentData()
+
+            if self.task_manager.editar_equipo(id_eq, nombre.text(), 
+                                               combo_d.currentData(), 
+                                               new_lider_id,
+                                               m_id_final, 
+                                               desc.text()):
+                QMessageBox.information(self, "Éxito", "Equipo actualizado")
+                self.cargar_equipos()
+            else:
+                QMessageBox.critical(self, "Error", "Fallo al actualizar")
