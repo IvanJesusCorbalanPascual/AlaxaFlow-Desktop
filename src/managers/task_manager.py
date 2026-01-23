@@ -281,6 +281,75 @@ class TaskManager:
         except Exception as e:
             print(f"Error creando tablero admin: {e}")
             return False
+
+    # --- GESTIÓN DE DEPARTAMENTOS ---
+    def obtener_departamentos(self):
+        try:
+            if not db.client: return []
+            res = db.client.table('departamentos').select('*').order('nombre').execute()
+            return res.data if res.data else []
+        except Exception as e:
+            print(f"Error obteniendo departamentos: {e}")
+            return []
+
+    def crear_departamento(self, nombre, descripcion):
+        try:
+            if not db.client: return False
+            db.client.table('departamentos').insert({
+                'nombre': nombre,
+                'descripcion': descripcion
+            }).execute()
+            return True
+        except Exception as e:
+            print(f"Error creando departamento: {e}")
+            return False
+
+    def eliminar_departamento(self, dept_id):
+        # OJO: Referencias cascada o restricción podrían fallar si hay usuarios o equipos
+        try:
+            if not db.client: return False
+            db.client.table('departamentos').delete().eq('id', dept_id).execute()
+            return True
+        except Exception as e:
+            print(f"Error borrando departamento: {e}")
+            return False
+
+    # --- GESTIÓN DE EQUIPOS ---
+    def obtener_equipos(self):
+        try:
+            if not db.client: return []
+            # Traer equipo junto con nombre de departamento (si Supabase join lo permite sencillo, 
+            # sino toca hacer 2 queries o join manual). Haremos select plano y luego cruzamos en UI.
+            res = db.client.table('equipos').select('*').order('nombre').execute()
+            return res.data if res.data else []
+        except Exception as e:
+            print(f"Error obteniendo equipos: {e}")
+            return []
+
+    def crear_equipo(self, nombre, departamento_id, lider_id, descripcion):
+        try:
+            if not db.client: return False
+            data = {
+                'nombre': nombre,
+                'departamento_id': departamento_id,
+                'descripcion': descripcion
+            }
+            if lider_id:
+                data['lider_id'] = lider_id
+                
+            db.client.table('equipos').insert(data).execute()
+            return True
+        except Exception as e:
+            print(f"Error creando equipo: {e}")
+            return False
+
+    def eliminar_equipo(self, equipo_id):
+        try:
+            if not db.client: return False
+            db.client.table('equipos').delete().eq('id', equipo_id).execute()
+            return True
+        except Exception as e:
+            print(f"Error borrando equipo: {e}")
         
     def editar_asignacion_tarea(self, id_tarea, id_usuario):
         try:

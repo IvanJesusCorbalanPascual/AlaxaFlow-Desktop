@@ -189,9 +189,15 @@ class MainWindow(QMainWindow):
         self.btn_add_column = QPushButton("➕ Añadir Columna")
         self.btn_add_column.setCursor(Qt.PointingHandCursor)
         self.btn_add_column.setStyleSheet("background-color: transparent; color: #FFFFFF; border: 1px solid #D7CCC8; padding: 6px; border-radius: 4px;")
-        self.btn_add_column.clicked.connect(self.agregar_columna)
-        # Lo colocamos junto al botón de accesibilidad
-        self.TopBar.layout().insertWidget(6, self.btn_add_column)
+        
+        # LOGICA NUEVA: Solo permitimos añadir columna si NO es trabajador
+        if self.rol != 'trabajador':
+            self.btn_add_column.clicked.connect(self.agregar_columna)
+            # Lo colocamos junto al botón de accesibilidad (index 6)
+            self.TopBar.layout().insertWidget(6, self.btn_add_column)
+        else:
+            # Si es trabajador, escondemos (o simplemente no lo añadimos) el botón
+            self.btn_add_column.hide()
 
         # Botón Admin (Solo para admin y manager)
         if self.rol in ['admin', 'manager']:
