@@ -317,6 +317,14 @@ class KanbanColumn(QFrame):
         self.btn_add.setObjectName("btn_add_card")
         self.btn_add.clicked.connect(self.crear_nueva_tarea)
         self.layout.addWidget(self.btn_add)
+        
+        # --- PERMISOS: ROL TRABAJADOR ---
+        # Si es trabajador, ocultamos botones de editar/borrar columna y añadir tarea
+        if hasattr(self.main_window, 'rol') and self.main_window.rol == 'trabajador':
+            self.btn_add.hide()
+            self.btn_edit_col.hide()
+            self.btn_delete_col.hide()
+            
         self.setLayout(self.layout)
 
     def dragEnterEvent(self, event):
