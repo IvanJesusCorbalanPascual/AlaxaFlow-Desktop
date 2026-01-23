@@ -332,15 +332,18 @@ class KanbanColumn(QFrame):
         else: event.ignore()
 
     def crear_nueva_tarea(self):
-        titulo_columna = self.layout.itemAt(0).widget().text()
+        titulo_columna = self.titulo
+
         text, ok = QInputDialog.getText(self, "Nueva Tarea", f"Añadir a {titulo_columna}:")
         if ok and text:
-            if self.main_window.usuario:
+            if hasattr(self.main_window, 'usuario') and self.main_window.usuario:
                 usuario_id = self.main_window.usuario.id
+
+                # Llama al manager para crear la tarea
                 if self.manager.crear_tarea(text, self.id_columna, usuario_id):
                     self.main_window.distribuir_tareas()
             else:
-                print("Error: Sin usuario")
+                QMessageBox.critical(self, "Error", "No se ha identificado el usuario actual")
 
     def add_card_widget(self, card_widget):
         # Asegurar que la tarjeta no estire la columna: limitar su ancho al de la columna
