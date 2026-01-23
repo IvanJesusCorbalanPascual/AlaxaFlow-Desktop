@@ -121,6 +121,9 @@
           <property name="styleSheet">
            <string notr="true">background: white; border: 1px solid #ddd; color: #333;</string>
           </property>
+          <property name="editTriggers">
+           <set>QAbstractItemView::NoEditTriggers</set>
+          </property>
           <property name="alternatingRowColors">
            <bool>true</bool>
           </property>
@@ -139,7 +142,17 @@
           </column>
           <column>
            <property name="text">
+            <string>Apellidos</string>
+           </property>
+          </column>
+          <column>
+           <property name="text">
             <string>Email</string>
+           </property>
+          </column>
+          <column>
+           <property name="text">
+            <string>Departamento</string>
            </property>
           </column>
           <column>
@@ -200,6 +213,9 @@
          <widget class="QTableWidget" name="table_boards">
           <property name="styleSheet">
            <string notr="true">background: white; border: 1px solid #ddd; color: #333;</string>
+          </property>
+          <property name="editTriggers">
+           <set>QAbstractItemView::NoEditTriggers</set>
           </property>
           <property name="alternatingRowColors">
            <bool>true</bool>
