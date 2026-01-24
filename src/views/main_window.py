@@ -1,5 +1,5 @@
 import os
-from PyQt5.QtWidgets import (QMainWindow, QPushButton, QMessageBox, QInputDialog, QScrollArea, QWidget, QHBoxLayout, QVBoxLayout)
+from PyQt5.QtWidgets import (QMainWindow, QPushButton, QMessageBox, QInputDialog, QScrollArea, QWidget, QHBoxLayout, QVBoxLayout, QDialog)
 from PyQt5 import uic
 from PyQt5.QtCore import Qt
 from src.managers.task_manager import TaskManager
