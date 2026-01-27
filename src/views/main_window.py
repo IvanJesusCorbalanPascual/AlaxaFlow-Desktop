@@ -65,7 +65,7 @@ QPushButton#btn_add_card:hover { background-color: #D7CCC8; color: #3E2723; }
 """
 
 ESTILO_CONTRASTE = """
-/* Fondo NEGRO solo para ventanas principales, NO global */
+/* 1. CONFIGURACIÓN GLOBAL ALTO CONTRASTE */
 QMainWindow, QDialog { 
     background-color: #000000; 
     color: #FFFF00; 
@@ -77,15 +77,25 @@ QWidget {
     color: #FFFF00;
 }
 
+/* 2. HEADER Y TÍTULOS */
 QFrame#TopBar { background-color: #000000; border-bottom: 4px solid #FFFF00; }
 QLabel#HeaderTitle { color: #FFFF00; font-size: 22px; text-decoration: underline; }
-
-QFrame#Columna { 
-    background-color: #000000; 
-    border: 2px solid #FFFFFF; 
-}
 QLabel#TituloColumna { color: #FFFFFF; font-size: 18px; border-bottom: 2px solid #333; }
 
+/* 3. BOTONES DEL HEADER */
+QPushButton#btn_accesibilidad, QPushButton#btn_add_column, QPushButton#btn_admin_panel {
+    background-color: #000000; 
+    color: #FFFF00; 
+    border: 2px solid #FFFF00; 
+    font-weight: bold;
+    padding: 6px 12px;
+    border-radius: 0px;
+}
+QPushButton#btn_accesibilidad:hover, QPushButton#btn_add_column:hover, QPushButton#btn_admin_panel:hover {
+    background-color: #333333;
+}
+
+/* 4. ELEMENTOS DE LA UI GENERAL */
 QFrame[class="tarjeta"] { background-color: #000000; color: #FFFF00; border: 2px solid #FFFF00; border-radius: 0px; margin-bottom: 10px; }
 QFrame[class="tarjeta"]:hover { border: 2px dashed #FFFFFF; }
 
@@ -93,52 +103,27 @@ QLineEdit { background-color: #000000; color: #FFFF00; border: 2px solid #FFFF00
 QPushButton { background-color: #000000; color: #FFFF00; border: 2px solid #FFFF00; padding: 8px 15px; border-radius: 0px; }
 QPushButton:hover { background-color: #333333; color: #FFFFFF; border-color: #FFFFFF; }
 
+/* Botones específicos */
 QPushButton#btn_accesibilidad { background-color: #FFFF00; color: #000000; border: 2px solid #FFFFFF; min-height: 20px; padding: 8px 15px; margin-right: 5px; }
 QPushButton#btn_add_card { color: #FFFF00; border: 2px dashed #FFFF00; text-align: center; margin-top: 5px; }
 
+/* 5. ARREGLO DEFINITIVO DE SCROLLS Y CONTENEDORES */
+/* Esto asegura que el fondo sea negro y sin bordes feos */
 QScrollArea, QScrollArea > QWidget > QWidget {
+    background-color: black;
+    border: none;
+}
+
+/* IMPORTANTE: Damos espacio al contenedor de columnas para que no se corte el borde izquierdo */
+QWidget#ContenedorColumnas {
     background-color: transparent;
-    border: none;
 }
 
-QScrollBar:vertical {
-    border: 1px solid #FFFF00;
-    background: #000000;
-    width: 10px;
-}
-
-QScrollBar::handle:vertical {
-    background: #FFFF00;
-    min-height: 20px;
-}
-
-/* 1. MATAR EL BLANCO DE LOS SCROLLS */
-QScrollArea, QScrollArea QWidget, QScrollArea QWidget QWidget {
-    background-color: black; /* Fondo negro puro */
-    border: none;
-}
-
-/* 2. ELIMINAR BARRA HORIZONTAL (La que te molestaba) */
-QScrollBar:horizontal {
-    height: 0px; 
-    background: transparent;
-}
-
-/* 3. BARRA VERTICAL ESTILO ALTO CONTRATE (Negro y Amarillo) */
-QScrollBar:vertical {
-    border: 1px solid #FFFF00;
-    background: #000000;
-    width: 12px;
-    margin: 0px;
-}
-QScrollBar::handle:vertical {
-    background: #FFFF00; /* Parte que se arrastra en amarillo */
-    min-height: 20px;
-}
-QScrollBar::add-line:vertical, QScrollBar::sub-line:vertical {
-    background: none; /* Elimina las flechitas blancas */
-    height: 0px;
-}
+/* Barras de Scroll */
+QScrollBar:horizontal { height: 0px; background: transparent; }
+QScrollBar:vertical { border: 1px solid #FFFF00; background: #000000; width: 12px; margin: 0px; }
+QScrollBar::handle:vertical { background: #FFFF00; min-height: 20px; }
+QScrollBar::add-line:vertical, QScrollBar::sub-line:vertical { background: none; height: 0px; }
 """
 
 """
@@ -188,7 +173,8 @@ class MainWindow(QMainWindow):
         # Botón para añadir columnas al tablero
         self.btn_add_column = QPushButton("➕ Añadir Columna")
         self.btn_add_column.setCursor(Qt.PointingHandCursor)
-        self.btn_add_column.setStyleSheet("background-color: transparent; color: #FFFFFF; border: 1px solid #D7CCC8; padding: 6px; border-radius: 4px;")
+        self.btn_add_column.setObjectName("btn_add_column")
+        self.btn_add_column.setStyleSheet("QPushButton#btn_add_column { background-color: transparent; color: #FFFFFF; border: 1px solid #D7CCC8; padding: 6px; border-radius: 4px; }")
         
         # LOGICA NUEVA: Solo permitimos añadir columna si NO es trabajador
         if self.rol != 'trabajador':
@@ -231,12 +217,13 @@ class MainWindow(QMainWindow):
 
         # Crea un contenedor interno
         self.contenedor_interno = QWidget()
+        self.contenedor_interno.setObjectName("ContenedorColumnas") 
         self.contenedor_interno.setStyleSheet("background: transparent;")
 
         # Layout horizontal dentro del scroll
         self.tablero_layout = QHBoxLayout(self.contenedor_interno)
         self.tablero_layout.setSpacing(15)
-        self.tablero_layout.setContentsMargins(10, 10, 10, 10)
+        self.tablero_layout.setContentsMargins(30, 20, 30, 20)
 
         # Conecta el contenedor al ScrollArea
         self.scroll_area.setWidget(self.contenedor_interno)
@@ -269,15 +256,22 @@ class MainWindow(QMainWindow):
             self.setStyleSheet(ESTILO_CONTRASTE)
             self.tema_actual = "contraste"
             self.btn_accesibilidad.setText("🎨 Estilo Normal")   
+
+            self.btn_add_column.setStyleSheet("")
         else:
             # Vuelve al estilo normal 
             self.setStyleSheet(ESTILO_NORMAL)
             self.tema_actual = "normal"
             self.btn_accesibilidad.setText("👁️ Alto Contraste")
+
+            self.btn_add_column.setStyleSheet("QPushButton#btn_add_column { background-color: transparent; color: #FFFFFF; border: 1px solid #D7CCC8; padding: 6px; border-radius: 4px; }")
             
         # Actualiza el estilo de las tarjetas, recorriendo las columnas y layouts
         if hasattr(self, 'cols_widgets'):
             for col_widget in self.cols_widgets.values():
+                if hasattr(col_widget, 'set_modo_visual'):
+                    col_widget.set_modo_visual(self.tema_actual)
+
                 layout = col_widget.scroll_layout
                 for i in range(layout.count()):
                     widget = layout.itemAt(i).widget()

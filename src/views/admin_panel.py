@@ -9,6 +9,135 @@ from src.managers.task_manager import TaskManager
 from src.managers.auth_manager import AuthManager
 from src.bd.conexion import db
 
+ESTILO_ADMIN_NORMAL = """
+    QMainWindow, QDialog, QWidget { background-color: #FAFAFA; color: #3E2723; }
+    QLabel { color: #3E2723; font-weight: bold; font-size: 14px; }
+    
+    #TopBar { background-color: #4E342E; border-bottom: 3px solid #FFB74D; }
+    #HeaderTitle { color: #FFFFFF; font-weight: bold; font-size: 20px; }
+
+    QLineEdit, QComboBox { 
+        background-color: #FFFFFF; color: #3E2723; 
+        border: 2px solid #D7CCC8; border-radius: 4px; padding: 5px; 
+    }
+    QComboBox QAbstractItemView { 
+        background-color: #FFFFFF; color: #3E2723; 
+        selection-background-color: #FFB74D; selection-color: #3E2723; 
+    }
+    
+    QTableWidget { 
+        background-color: #FFFFFF; color: #3E2723; 
+        gridline-color: #D7CCC8; border: 1px solid #D7CCC8; 
+    }
+    QHeaderView::section { 
+        background-color: #D7CCC8; color: #3E2723; padding: 4px; border: 1px solid #BCAAA4; 
+    }
+    
+    QTabWidget::pane { border: 1px solid #D7CCC8; background: #FAFAFA; }
+    QTabBar::tab { background: #EFEBE9; color: #3E2723; padding: 8px 12px; margin-right: 2px; border-top-left-radius: 4px; border-top-right-radius: 4px; }
+    QTabBar::tab:selected { background: #D7CCC8; font-weight: bold; }
+
+    QPushButton { 
+        background-color: #EFEBE9; color: #3E2723; 
+        border: 1px solid #D7CCC8; padding: 6px 15px; border-radius: 4px; 
+    }
+    QPushButton:hover { background-color: #D7CCC8; }
+
+    /* Colores Específicos Normales */
+    QPushButton#btn_add_user, QPushButton#btn_registrar, QPushButton#btn_save_dept { background-color: #4CAF50; color: white; font-weight: bold; } 
+    QPushButton#btn_add_board, QPushButton#btn_crear_tablero { background-color: #FF9800; color: white; font-weight: bold; }
+    QPushButton#btn_add_dept { background-color: #009688; color: white; font-weight: bold; }
+    QPushButton#btn_add_team { background-color: #673AB7; color: white; font-weight: bold; }
+    QPushButton#btn_promover { background-color: #2196F3; color: white; }
+    
+    QPushButton#btn_refresh, QPushButton#btn_refresh_users, QPushButton#btn_refresh_boards { 
+        background-color: #00BCD4; color: white; font-weight: bold; 
+    }
+    
+    QPushButton#btn_back { background-color: #5D4037; color: #FFB74D; border: 1px solid #FFB74D; font-weight:bold; }
+    QPushButton#btn_back:hover { background-color: #FFB74D; color: #3E2723; }
+"""
+
+ESTILO_ADMIN_CONTRASTE = """
+    QMainWindow, QDialog, QWidget, QFrame { background-color: #000000; color: #FFFF00; }
+    
+    QLabel { color: #FFFF00; font-weight: bold; font-size: 14px; background: transparent; }
+
+    #TopBar { background-color: #000000; border-bottom: 4px solid #FFFF00; }
+    #HeaderTitle { color: #FFFF00; font-size: 22px; text-decoration: underline; }
+    
+    #tab_users, #tab_boards, #tab_dept, #tab_equipos {
+        background-color: #000000;
+        border: none;
+    }
+
+    QLineEdit, QComboBox { 
+        background-color: #000000; color: #FFFF00; 
+        border: 2px solid #FFFF00; border-radius: 0px; padding: 5px; 
+    }
+    QComboBox QAbstractItemView { 
+        background-color: #000000; color: #FFFF00; 
+        selection-background-color: #FFFF00; selection-color: #000000; 
+        border: 1px solid #FFFF00; 
+    }
+    
+    /* TABLAS: Fondo negro puro y borde amarillo */
+    QTableWidget, QTableView { 
+        background-color: #000000; color: #FFFF00; 
+        gridline-color: #FFFF00; border: 2px solid #FFFF00; 
+        alternate-background-color: #000000; 
+    }
+    QTableWidget::item:selected { background-color: #333333; color: #FFFF00; }
+
+    /* [AÑADIDO] ESTILOS ESPECÍFICOS PARA LA CABECERA (HEADER) */
+    QHeaderView {
+        background-color: #000000;
+        border: none;
+    }
+    QHeaderView::section { 
+        background-color: #000000; 
+        color: #FFFF00; 
+        padding: 5px; 
+        border: 1px solid #FFFF00; 
+        font-weight: bold; 
+    }
+    /* La esquina superior izquierda de la tabla */
+    QTableCornerButton::section {
+        background-color: #000000;
+        border: 1px solid #FFFF00;
+    }
+
+    QTabWidget::pane { border: 2px solid #FFFF00; background-color: #000000; }
+    QTabBar::tab { 
+        background: #000000; color: #FFFF00; 
+        border: 2px solid #FFFF00; padding: 8px 12px; margin-right: 4px; 
+    }
+    QTabBar::tab:selected { 
+        background: #FFFF00; color: #000000; font-weight: bold; 
+    }
+
+    QPushButton { 
+        background-color: #000000; color: #FFFF00; 
+        border: 2px solid #FFFF00; padding: 6px 15px; border-radius: 0px; font-weight: bold; 
+    }
+    QPushButton:hover { background-color: #333333; color: #FFFFFF; border-color: #FFFFFF; }
+
+    /* BOTONES ESPECÍFICOS A NEGRO */
+    QPushButton#btn_add_user, QPushButton#btn_add_board,
+    QPushButton#btn_registrar, QPushButton#btn_crear_tablero, 
+    QPushButton#btn_add_dept, QPushButton#btn_add_team, 
+    QPushButton#btn_promover, QPushButton#btn_save_dept,
+    QPushButton#btn_refresh, QPushButton#btn_refresh_users, QPushButton#btn_refresh_boards,
+    QPushButton#btn_back {
+        background-color: #000000; 
+        color: #FFFF00; 
+        border: 2px solid #FFFF00;
+    }
+    QPushButton#btn_back:hover, QPushButton#btn_add_team:hover {
+        background-color: #333333; color: white;
+    }
+"""
+
 class AdminWindow(QMainWindow):
     def __init__(self, usuario_actual, parent_window=None):
         super().__init__()
@@ -20,7 +149,39 @@ class AdminWindow(QMainWindow):
         # --- CARGAR EL ARCHIVO XML (.ui) ---
         ui_path = os.path.join(os.path.dirname(__file__), "../ui/admin.ui")
         uic.loadUi(ui_path, self)
-        
+
+        self.frame_header.setStyleSheet("")       
+        self.frame_header.setObjectName("TopBar")
+
+        self.label_title.setStyleSheet("")        
+        self.label_title.setObjectName("HeaderTitle")
+
+        self.tabWidget.setStyleSheet("")
+
+        if hasattr(self, 'tab_users'):
+            self.tab_users.setStyleSheet("")
+            self.tab_users.setObjectName("tab_users")
+
+        if hasattr(self, 'tab_boards'):
+            self.tab_boards.setStyleSheet("")
+            self.tab_boards.setObjectName("tab_boards")
+
+        self.table_users.setStyleSheet("")
+        self.table_boards.setStyleSheet("")
+
+        self.btn_back.setStyleSheet("")
+        self.btn_add_user.setStyleSheet("")
+        self.btn_add_board.setStyleSheet("")
+        self.btn_refresh_users.setStyleSheet("")   
+        self.btn_refresh_boards.setStyleSheet("")
+
+        self.btn_back.setObjectName("btn_back")
+        self.btn_add_user.setObjectName("btn_add_user")
+        self.btn_add_board.setObjectName("btn_add_board")
+
+        self.btn_refresh_users.setObjectName("btn_refresh_users")
+        self.btn_refresh_boards.setObjectName("btn_refresh_boards")
+
         self.setup_tables()
         self.conectar_botones()
         
@@ -30,6 +191,28 @@ class AdminWindow(QMainWindow):
         
         # Pestañas extra según rol
         self.setup_extra_tabs()
+
+        self.aplicar_estilo(self)
+
+    # Método para aplicar el estilo adecuado según el tema actual
+    def aplicar_estilo(self, widget):
+        usar_contraste = False
+        # Consulta a MainWindow qué tema está usando
+        if self.parent_window and hasattr(self.parent_window, 'tema_actual') and self.parent_window.tema_actual == 'contraste':
+            usar_contraste = True
+            
+        if usar_contraste:
+            widget.setStyleSheet(ESTILO_ADMIN_CONTRASTE)
+            self.table_users.setAlternatingRowColors(False)
+            self.table_boards.setAlternatingRowColors(False)
+            if hasattr(self, 'table_depts'): self.table_depts.setAlternatingRowColors(False)
+            if hasattr(self, 'table_teams'): self.table_teams.setAlternatingRowColors(False)
+        else:
+            widget.setStyleSheet(ESTILO_ADMIN_NORMAL)
+            self.table_users.setAlternatingRowColors(True)
+            self.table_boards.setAlternatingRowColors(True)
+            if hasattr(self, 'table_depts'): self.table_depts.setAlternatingRowColors(True)
+            if hasattr(self, 'table_teams'): self.table_teams.setAlternatingRowColors(True)
 
     def setup_tables(self):
         # Ajustar ancho de columnas para que se vean bonitas
@@ -97,8 +280,8 @@ class AdminWindow(QMainWindow):
         dialog = QDialog(self)
         dialog.setWindowTitle("Registrar Nuevo Usuario")
         dialog.setFixedWidth(400)
-        # Estilo forzado para asegurar que se ve bien
-        dialog.setStyleSheet("background: #FAFAFA; color: #333;")
+        # Usa el helper para el estilo para asegurar que se ve bien
+        self.aplicar_estilo(dialog)
         
         layout = QFormLayout(dialog)
 
@@ -224,7 +407,7 @@ class AdminWindow(QMainWindow):
         
         # Botone de acción
         btn = QPushButton("Registrar Empleado")
-        btn.setStyleSheet("background: #4CAF50; color: white; padding: 8px; font-weight: bold; border-radius: 4px;")
+        btn.setObjectName("btn_registrar")
         btn.setCursor(Qt.PointingHandCursor)
         btn.clicked.connect(dialog.accept)
         layout.addRow(btn)
@@ -313,7 +496,7 @@ class AdminWindow(QMainWindow):
 
         dialog = QDialog(self)
         dialog.setWindowTitle("Nuevo Tablero")
-        dialog.setStyleSheet("background: #FAFAFA; color: #333;")
+        self.aplicar_estilo(dialog)
         layout = QFormLayout(dialog)
         
         titulo = QLineEdit()
@@ -328,7 +511,7 @@ class AdminWindow(QMainWindow):
         layout.addRow("Asignar a:", combo_owner)
         
         btn = QPushButton("Crear Tablero")
-        btn.setStyleSheet("background: #FF9800; color: white; padding: 5px;")
+        btn.setObjectName("btn_crear_tablero")
         btn.clicked.connect(dialog.accept)
         layout.addRow(btn)
         
@@ -352,12 +535,14 @@ class AdminWindow(QMainWindow):
         # 1. Pestaña DEPARTAMENTOS (Solo Admin)
         if rol_actual == 'admin':
             self.tab_dept = QWidget()
+            self.tab_dept.setObjectName("tab_dept")
             self.tabWidget.addTab(self.tab_dept, "🏢 Gestión Departamentos")
             self.construir_tab_departamentos()
         
         # 2. Pestaña EQUIPOS (Admin, Manager, Lider)
         if rol_actual in ['admin', 'manager', 'lider_equipo']:
             self.tab_equipos = QWidget()
+            self.tab_equipos.setObjectName("tab_equipos")
             self.tabWidget.addTab(self.tab_equipos, "⚔️ Gestión Equipos")
             self.construir_tab_equipos()
 
@@ -368,11 +553,12 @@ class AdminWindow(QMainWindow):
         h_layout = QHBoxLayout()
         btn_add = QPushButton("+ Nuevo Dept.")
         btn_add.setCursor(Qt.PointingHandCursor)
-        btn_add.setStyleSheet("background-color: #009688; color: white; padding: 6px 12px; border-radius: 4px; font-weight: bold;")
+        btn_add.setObjectName("btn_add_dept")
         btn_add.clicked.connect(self.crear_departamento_dialog)
         
         btn_refresh = QPushButton("🔄 Recargar")
         btn_refresh.setCursor(Qt.PointingHandCursor)
+        btn_refresh.setObjectName("btn_refresh")
         btn_refresh.clicked.connect(self.cargar_departamentos)
         
         h_layout.addWidget(btn_add)
@@ -405,11 +591,12 @@ class AdminWindow(QMainWindow):
         h_layout = QHBoxLayout()
         btn_add = QPushButton("+ Nuevo Equipo")
         btn_add.setCursor(Qt.PointingHandCursor)
-        btn_add.setStyleSheet("background-color: #673AB7; color: white; padding: 6px 12px; border-radius: 4px; font-weight: bold;")
+        btn_add.setObjectName("btn_add_team")
         btn_add.clicked.connect(self.crear_equipo_dialog)
 
         btn_refresh = QPushButton("🔄 Recargar")
         btn_refresh.setCursor(Qt.PointingHandCursor)
+        btn_refresh.setObjectName("btn_refresh")
         btn_refresh.clicked.connect(self.cargar_equipos)
         
         h_layout.addWidget(btn_add)
@@ -450,8 +637,9 @@ class AdminWindow(QMainWindow):
         dialog = QDialog(self)
         dialog.setWindowTitle("Nuevo Departamento")
         dialog.setFixedWidth(300)
+        self.aplicar_estilo(dialog)
         layout = QFormLayout(dialog)
-        
+
         nombre = QLineEdit()
         desc = QLineEdit()
         
@@ -498,6 +686,7 @@ class AdminWindow(QMainWindow):
         dialog = QDialog(self)
         dialog.setWindowTitle(f"Editar Departamento: {nombre_actual}")
         dialog.setFixedWidth(400)
+        self.aplicar_estilo(dialog)
         layout = QVBoxLayout(dialog)
         
         form_layout = QFormLayout()
@@ -529,7 +718,7 @@ class AdminWindow(QMainWindow):
         
         # Boton Promover Manager
         btn_promover = QPushButton("Añadir Manager al Departamento")
-        btn_promover.setStyleSheet("background-color: #2196F3; color: white;")
+        btn_promover.setObjectName("btn_promover")
         
         def open_promote_dialog():
             self.promover_manager_dialog(id_dept)
@@ -539,7 +728,7 @@ class AdminWindow(QMainWindow):
         layout.addWidget(btn_promover)
         
         btn_save = QPushButton("Guardar Cambios")
-        btn_save.setStyleSheet("background: #4CAF50; color: white;")
+        btn_save.setObjectName("btn_save_dept")
         btn_save.clicked.connect(dialog.accept)
         layout.addWidget(btn_save)
         
@@ -554,6 +743,7 @@ class AdminWindow(QMainWindow):
         # Dialogo para seleccionar un usuario y hacerlo manager de este departamento
         d = QDialog(self)
         d.setWindowTitle("Promover a Manager")
+        self.aplicar_estilo(d)
         l = QVBoxLayout(d)
         l.addWidget(QLabel("Selecciona un empleado del departamento para ascender:"))
         
@@ -607,6 +797,7 @@ class AdminWindow(QMainWindow):
         # Filtro: trabajadores del mismo departamento
         sd = QDialog(self)
         sd.setWindowTitle(f"Sustituto para: {equipo['nombre']}")
+        self.aplicar_estilo(sd)
         sl = QVBoxLayout(sd)
         sl.addWidget(QLabel(f"Selecciona nuevo líder para '{equipo['nombre']}':"))
         
@@ -690,6 +881,7 @@ class AdminWindow(QMainWindow):
     def crear_equipo_dialog(self):
         dialog = QDialog(self)
         dialog.setWindowTitle("Nuevo Equipo")
+        self.aplicar_estilo(dialog)
         layout = QFormLayout(dialog)
         
         nombre = QLineEdit()
@@ -811,6 +1003,7 @@ class AdminWindow(QMainWindow):
         dialog = QDialog(self)
         dialog.setWindowTitle(f"Editar Equipo: {eq_data['nombre']}")
         dialog.setFixedWidth(400)
+        self.aplicar_estilo(dialog)
         layout = QFormLayout(dialog)
         
         nombre = QLineEdit(eq_data['nombre'])

@@ -26,6 +26,38 @@ ESTILO_CARD_CONTRASTE = """
     QFrame[class="tarjeta"]:hover { background-color: #333333; border: 2px dashed #FFFF00; }
 """
 
+ESTILO_COLUMNA_NORMAL = """
+    QFrame#Columna {
+        background-color: #EFF1F3;
+        border: 1px solid #D7CCC8;
+        min-width: 220px;
+        min-height: 100%; 
+        border-radius: 8px;
+    }
+    QLabel#TituloColumna { color: #4E342E; }
+    QPushButton#btn_add_card { color: #5D4037; border: none; }
+    QPushButton#btn_add_card:hover { background-color: #D7CCC8; color: #3E2723; }
+"""
+
+ESTILO_COLUMNA_CONTRASTE = """
+    QFrame#Columna {
+        background-color: #000000;      /* Fondo NEGRO puro */
+        border: 2px solid #FFFF00;      /* Borde AMARILLO fuerte */
+        min-width: 220px;
+        min-height: 100%; 
+        border-radius: 0px;
+    }
+    QLabel#TituloColumna { color: #FFFF00; font-weight: bold; text-decoration: underline; }
+    QPushButton#btn_add_card { 
+        color: #FFFF00; 
+        border: 2px dashed #FFFF00; 
+        background-color: #000000;
+        margin-top: 5px;
+        font-weight: bold;
+    }
+    QPushButton#btn_add_card:hover { background-color: #333333; }
+"""
+
 """
 Clase para el diálogo de edición de tareas, contiene la logica para editar y borrar tareas
 """
@@ -40,101 +72,127 @@ class TareaDialog(QDialog):
     
         self.setWindowTitle("AlaxaFlow - Detalle")
         self.setFixedWidth(650)
-        # Color del fondo,
-        self.setStyleSheet("""
+        
+        estilo_normal = """
             QDialog {
-                background-color: #FAFAFA; /* ALTERADO: Fondo Crema suave (antes #FFFFFF) */
-                border: 2px solid #D7CCC8; /* AÑADIDO: Borde marrón suave */
+                background-color: #FAFAFA;
+                border: 2px solid #D7CCC8;
                 border-radius: 8px;
             }
+            /* Cabecera (reemplaza al styleSheet del frame) */
+            QFrame#HeaderFrame {
+                background-color: #4E342E;
+                border-bottom: 3px solid #FFB74D;
+            }
+            /* Título (reemplaza al styleSheet del label) */
+            QLabel#HeaderTitle {
+                color: white; font-weight: bold; font-family: 'Segoe UI'; font-size: 16px; border: none;
+            }
             
-            /* TÍTULO EDITABLE */
+            /* Inputs y TextEdit (reemplaza estilos inline) */
             QLineEdit#InputTitulo {
-                font-family: 'Segoe UI', sans-serif;
-                font-size: 22px;
-                font-weight: bold;
-                color: #3E2723;   /* ALTERADO: Marrón Oscuro */
-                background: transparent;
-                border: 2px solid transparent;
-                padding: 4px 8px; /* AÑADIDO: Padding extra para evitar cortes */
-                border-radius: 5px;
-                selection-background-color: #FFB74D; /* AÑADIDO: Color selección */
-                selection-color: #3E2723;
+                font-family: 'Segoe UI', sans-serif; font-size: 22px; font-weight: bold;
+                color: #3E2723; background: transparent;
+                border: 2px solid transparent; border-radius: 5px; padding: 4px 8px;
+                selection-background-color: #FFB74D; selection-color: #3E2723;
             }
-            QLineEdit#InputTitulo:hover {
-                background-color: #FFFFFF; /* ALTERADO: Blanco al pasar el ratón */
-                border: 2px dashed #D7CCC8; 
-            }
-            QLineEdit#InputTitulo:focus {
-                background-color: #FFFFFF;
-                border: 2px solid #FFB74D; /* ALTERADO: Foco naranja Alaxa */
-            }
+            QLineEdit#InputTitulo:hover { background-color: #FFFFFF; border: 2px dashed #D7CCC8; }
+            QLineEdit#InputTitulo:focus { background-color: #FFFFFF; border: 2px solid #FFB74D; }
             
-            /* ETIQUETAS */
             QLabel { color: #5D4037; font-weight: bold; font-size: 14px; }
             
-            /* ÁREA DE DESCRIPCIÓN */
             QTextEdit {
-                background-color: #FFFFFF; /* ALTERADO: Blanco limpio (antes gris #F4F5F7) */
-                border: 2px solid #D7CCC8; /* ALTERADO: Borde marrón */
-                border-radius: 6px;
-                padding: 12px;
-                font-size: 14px;
-                color: #3E2723; /* ALTERADO: Texto marrón */
+                background-color: #FFFFFF; border: 2px solid #D7CCC8; border-radius: 6px;
+                padding: 12px; font-size: 14px; color: #3E2723;
             }
-            QTextEdit:focus {
-                border: 2px solid #FFB74D; /* ALTERADO: Foco Naranja */
-            }
+            QTextEdit:focus { border: 2px solid #FFB74D; }
 
-            /* BOTÓN GUARDAR (Estilo Principal Alaxa) */
-            QPushButton#btn_guardar {
-                background-color: #4E342E; /* ALTERADO: Marrón Oscuro (antes verde) */
-                color: #FFB74D; /* ALTERADO: Texto Naranja (antes blanco) */
-                font-weight: bold; 
-                padding: 10px 20px; 
-                border-radius: 5px; 
-                border: 1px solid #4E342E;
-                font-size: 14px;
-            }
-            QPushButton#btn_guardar:hover { 
-                background-color: #5D4037; 
-                border: 1px solid #FFB74D;
-                color: #FFFFFF;
-            }
-
-            /* BOTÓN BORRAR (Estilo Alerta) */
-            QPushButton#btn_borrar {
-                background-color: transparent; 
-                color: #D32F2F; 
-                font-weight: bold;
-                padding: 8px 15px; 
-                border: 2px solid #D32F2F; /* ALTERADO: Borde más grueso (antes 1px) */
-                border-radius: 5px;
-            }
-            QPushButton#btn_borrar:hover { 
-                background-color: #FFEBEE; 
-            }
+            /* ComboBox */
             QComboBox {
-                background-color: #FFFFFF;
-                border: 2px solid #D7CCC8;
-                border-radius: 4px;
-                padding: 5px;
-                font-size: 13px;
-                color: #3E2723;
-                min-width: 200px;
+                background-color: #FFFFFF; border: 2px solid #D7CCC8; border-radius: 4px;
+                padding: 5px; font-size: 13px; color: #3E2723; min-width: 200px;
             }
             QComboBox:hover { border: 2px solid #FFB74D; }
             QComboBox::drop-down { border: none; }          
             QComboBox QAbstractItemView {
-                background-color: #FFFFFF;  /* Fondo de la lista BLANCO */
-                color: #3E2723;             /* Texto MARRÓN */
-                selection-background-color: #FFB74D; /* Color al pasar el ratón (Naranja) */
-                selection-color: #3E2723;   /* Texto al pasar el ratón */
-                border: 1px solid #D7CCC8;
-                outline: none;
+                background-color: #FFFFFF; color: #3E2723;
+                selection-background-color: #FFB74D; selection-color: #3E2723;
+                border: 1px solid #D7CCC8; outline: none;
             }
 
-        """)
+            /* Botones (reemplaza al styleSheet gigante del botón guardar) */
+            QPushButton#btn_guardar {
+                background-color: #4CAF50; color: white; font-weight: bold; 
+                padding: 10px 20px; border-radius: 5px; border: none; font-size: 14px;
+            }
+            QPushButton#btn_guardar:hover { background-color: #43A047; }
+
+            QPushButton#btn_borrar {
+                background-color: transparent; color: #D32F2F; font-weight: bold;
+                padding: 8px 15px; border: 2px solid #D32F2F; border-radius: 5px;
+            }
+            QPushButton#btn_borrar:hover { background-color: #FFEBEE; }
+        """
+
+        estilo_contraste = """
+            QDialog {
+                background-color: #000000; border: 2px solid #FFFF00; border-radius: 0px;
+            }
+            QFrame#HeaderFrame {
+                background-color: #000000; border-bottom: 2px solid #FFFF00;
+            }
+            QLabel#HeaderTitle {
+                color: #FFFF00; font-weight: bold; font-size: 18px; text-decoration: underline; border: none;
+            }
+            QLineEdit#InputTitulo {
+                font-family: 'Verdana', sans-serif; font-size: 22px; font-weight: bold;
+                color: #FFFF00; background: #000000;
+                border: 2px solid #FFFF00; border-radius: 0px; padding: 4px 8px;
+                selection-background-color: #FFFF00; selection-color: #000000;
+            }
+            QLineEdit#InputTitulo:focus { background-color: #333333; }
+            
+            QLabel { color: #FFFF00; font-weight: bold; font-size: 14px; }
+            
+            QTextEdit {
+                background-color: #000000; border: 2px solid #FFFF00; border-radius: 0px;
+                padding: 12px; font-size: 14px; color: #FFFF00; font-weight: bold;
+            }
+            QComboBox {
+                background-color: #000000; border: 2px solid #FFFF00; border-radius: 0px;
+                padding: 5px; font-size: 13px; color: #FFFF00; font-weight: bold; min-width: 200px;
+            }
+            QComboBox QAbstractItemView {
+                background-color: #000000; color: #FFFF00;
+                selection-background-color: #FFFF00; selection-color: #000000;
+                border: 1px solid #FFFF00;
+            }
+            QPushButton#btn_guardar {
+                background-color: #000000; color: #FFFF00; font-weight: bold; 
+                padding: 10px 20px; border-radius: 0px; border: 2px solid #FFFF00; font-size: 14px;
+            }
+            QPushButton#btn_guardar:hover { background-color: #333333; color: #FFFFFF; }
+
+            QPushButton#btn_borrar {
+                background-color: #000000; color: #FFFF00; font-weight: bold;
+                padding: 8px 15px; border: 2px dashed #FFFF00; border-radius: 0px;
+            }
+            QPushButton#btn_borrar:hover { background-color: #FF0000; color: #FFFFFF; border: 2px solid #FF0000; }
+        """
+
+        # Logica para elegir el tema según el tema actual en la ventana principal
+        usar_contraste = False
+        if parent and hasattr(parent, 'window'):
+            main_win = parent.window()
+            if hasattr(main_win, 'tema_actual') and main_win.tema_actual == 'contraste':
+                usar_contraste = True
+
+        # Aplica el estilo correspondiente al QDialog
+        if usar_contraste:
+            self.setStyleSheet(estilo_contraste)
+        else:
+            self.setStyleSheet(estilo_normal)
+        
         # Layout principal
         main_layout = QVBoxLayout()
         main_layout.setContentsMargins(0, 0, 0, 0)
@@ -144,7 +202,6 @@ class TareaDialog(QDialog):
         header_frame = QFrame()
         header_frame.setObjectName("HeaderFrame")
         header_frame.setFixedHeight(50) 
-        header_frame.setStyleSheet("background-color: #4E342E; border-bottom: 3px solid #FFB74D;")
         
         header_layout = QHBoxLayout(header_frame)
         # Margen interno del header
@@ -152,7 +209,6 @@ class TareaDialog(QDialog):
 
         lbl_text_header = QLabel("DETALLES DE LA TARJETA")
         lbl_text_header.setObjectName("HeaderTitle")
-        lbl_text_header.setStyleSheet("color: white; font-weight: bold; font-family: 'Segoe UI'; letter-spacing: 1px; border: none;")
 
         header_layout.addWidget(lbl_text_header)
         header_layout.addStretch()
@@ -180,7 +236,6 @@ class TareaDialog(QDialog):
         lbl_assign_icon = QLabel("👤")
         lbl_assign_icon.setStyleSheet("font-size: 18px; border: none;")
         lbl_assign = QLabel("Asignado a:")
-        lbl_assign.setStyleSheet("font-weight: bold; color: #5D4037; border: none;")
 
         self.combo_usuarios = QComboBox()
         self.combo_usuarios.setCursor(Qt.PointingHandCursor)
@@ -200,9 +255,7 @@ class TareaDialog(QDialog):
         lbl_desc_layout = QHBoxLayout()
         lbl_desc_icon = QLabel("📝")
         lbl_desc_icon.setStyleSheet("font-size: 18px; border:none;")
-
         lbl_desc = QLabel("Descripción")
-        lbl_desc.setStyleSheet("margin-left: 5px; color: #4E342E;")
         
         lbl_desc_layout.addWidget(lbl_desc_icon)
         lbl_desc_layout.addWidget(lbl_desc)
@@ -239,15 +292,9 @@ class TareaDialog(QDialog):
 
         # Botón guardar cambios a la derecha
         self.btn_guardar = QPushButton("💾 Guardar cambios")
-        self.btn_guardar.setCursor(Qt.PointingHandCursor)
-        self.btn_guardar.setStyleSheet("""
-            QPushButton {
-                background-color: #4CAF50; color: white; font-weight: bold; 
-                padding: 10px 20px; border-radius: 5px; border: none; font-size: 14px;
-            }
-            QPushButton:hover { background-color: #43A047; }
-        """)
+        self.btn_guardar.setObjectName("btn_guardar")
 
+        self.btn_guardar.setCursor(Qt.PointingHandCursor)
         self.btn_guardar.clicked.connect(self.guardar)
         btn_layout.addWidget(self.btn_guardar)
 
@@ -456,15 +503,7 @@ class KanbanColumn(QFrame):
         self.setObjectName("Columna")
         self.setAcceptDrops(True) 
         
-        self.setStyleSheet("""
-            QFrame#Columna {
-                background-color: #EFF1F3;
-                border: 1px solid #D7CCC8;
-                min-width: 280px;
-                min-height: 100%; 
-                border-radius: 8px;
-            }
-        """)
+        self.setStyleSheet(ESTILO_COLUMNA_NORMAL)
 
         self.setSizePolicy(QSizePolicy.Fixed, QSizePolicy.Expanding)
         
@@ -482,7 +521,7 @@ class KanbanColumn(QFrame):
         self.header_label.setWordWrap(True)
         self.header_label.setTextFormat(Qt.RichText)
         safe = titulo.replace('&', '&amp;').replace('<', '&lt;').replace('>', '&gt;')
-        self.header_label.setText(f'<div style="word-break:break-all; white-space:normal; font-weight:bold; font-size:16px; color:#4E342E;">{safe}</div>')
+        self.header_label.setText(f'<div style="word-break:break-all; white-space:normal; font-weight:bold; font-size:16px;">{safe}</div>')
         # Permitir que el label ocupe el espacio disponible para mostrar el título completo
         self.header_label.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Preferred)
         self.header_label.setObjectName("TituloColumna")
@@ -564,15 +603,16 @@ class KanbanColumn(QFrame):
         fm = self.header_label.fontMetrics()
         text_width = fm.horizontalAdvance(titulo)
         # Espacio extra: botones + márgenes interiores (usamos 12px de margen lateral)
-        extra = (edit_w if 'edit_w' in locals() else 44) + (del_w if 'del_w' in locals() else 88) + 12 * 2 + 20
-        desired_width = max(260, text_width + extra)
+        extra = (edit_w if 'edit_w' in locals() else 44) + (del_w if 'del_w' in locals() else 88) + 24 + 30
+        desired_width = max(220, text_width + extra)
         self.setMinimumWidth(desired_width)
         # Evitar que el layout padre reduzca la columna: preferimos mantener el ancho mínimo
-        self.setSizePolicy(QSizePolicy.Fixed, QSizePolicy.Expanding)
+        self.setSizePolicy(QSizePolicy.Minimum, QSizePolicy.Expanding)
         
         self.scroll = QScrollArea()
         self.scroll.setWidgetResizable(True)
         self.scroll.setFrameShape(QFrame.NoFrame)
+        self.scroll.setHorizontalScrollBarPolicy(Qt.ScrollBarAlwaysOff)
         self.scroll.setStyleSheet("""
             QScrollArea { background: transparent; border: none; }
             QScrollArea > QWidget > QWidget { background: transparent; }
@@ -586,6 +626,8 @@ class KanbanColumn(QFrame):
         self.scroll_layout = QVBoxLayout(self.scroll_content)
         self.scroll_layout.setAlignment(Qt.AlignTop)
         self.scroll_layout.setSpacing(10)
+
+        self.scroll_layout.setContentsMargins(2, 2, 2, 2)
         
         self.scroll.setWidget(self.scroll_content)
         self.layout.addWidget(self.scroll)
@@ -604,6 +646,10 @@ class KanbanColumn(QFrame):
             self.btn_delete_col.hide()
             
         self.setLayout(self.layout)
+
+        # Comprueba si el tema actual es de alto contraste
+        if hasattr(self.main_window, 'tema_actual') and self.main_window.tema_actual == 'contraste':
+            self.set_modo_visual('contraste')
 
     def dragEnterEvent(self, event):
         if event.mimeData().hasText(): event.accept()
@@ -625,13 +671,25 @@ class KanbanColumn(QFrame):
         dlg.setOkButtonText("Aceptar")
         dlg.setCancelButtonText("Cancelar")
 
-        dlg.setStyleSheet("""
+        estilo_normal = """
             QInputDialog { background-color: #FAFAFA; border: 2px solid #D7CCC8; border-radius: 8px; }
             QLabel { color: #3E2723; font-weight: bold; font-size: 14px; }
             QLineEdit { background-color: #FFFFFF; color: #3E2723; border: 2px solid #D7CCC8; border-radius: 4px; padding: 5px; }
             QPushButton { background-color: #EFEBE9; color: #3E2723; border: 1px solid #D7CCC8; padding: 5px 15px; border-radius: 4px; }
             QPushButton:hover { background-color: #D7CCC8; }
-        """)
+        """
+        estilo_contraste = """
+            QInputDialog { background-color: #000000; border: 2px solid #FFFF00; border-radius: 0px; }
+            QLabel { color: #FFFF00; font-weight: bold; font-size: 14px; }
+            QLineEdit { background-color: #000000; color: #FFFF00; border: 2px solid #FFFF00; border-radius: 0px; padding: 5px; }
+            QPushButton { background-color: #000000; color: #FFFF00; border: 2px solid #FFFF00; padding: 5px 15px; border-radius: 0px; }
+            QPushButton:hover { background-color: #333333; color: #FFFFFF; }
+        """
+        # Detección del tema actual
+        if hasattr(self.main_window, 'tema_actual') and self.main_window.tema_actual == 'contraste':
+            dlg.setStyleSheet(estilo_contraste)
+        else:
+            dlg.setStyleSheet(estilo_normal)
 
         if dlg.exec_() == QDialog.Accepted:
             text = dlg.textValue()
@@ -644,19 +702,11 @@ class KanbanColumn(QFrame):
                     QMessageBox.critical(self, "Error", "No se ha identificado el usuario actual")
 
     def add_card_widget(self, card_widget):
-        # Asegurar que la tarjeta no estire la columna: limitar su ancho al de la columna
-        max_w = max(100, self.minimumWidth() - 20)
-        card_widget.setMaximumWidth(max_w)
+        # Asegurar que la tarjeta no estire la columna, se expande para ocupar todo menos los 2 px de margen
         card_widget.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Minimum)
         self.scroll_layout.addWidget(card_widget)
 
     def resizeEvent(self, event):
-        # Al redimensionar la columna, actualizar el ancho máximo de las tarjetas
-        max_w = max(100, self.width() - 20)
-        for i in range(self.scroll_layout.count()):
-            w = self.scroll_layout.itemAt(i).widget()
-            if w:
-                w.setMaximumWidth(max_w)
         super().resizeEvent(event)
 
     def pedir_editar_columna(self):
@@ -667,13 +717,27 @@ class KanbanColumn(QFrame):
         dlg.setOkButtonText("Guardar")
         dlg.setCancelButtonText("Cancelar")
 
-        dlg.setStyleSheet("""
+        estilo_normal = """
             QInputDialog { background-color: #FAFAFA; border: 2px solid #D7CCC8; border-radius: 8px; }
             QLabel { color: #3E2723; font-weight: bold; font-size: 14px; }
             QLineEdit { background-color: #FFFFFF; color: #3E2723; border: 2px solid #D7CCC8; border-radius: 4px; padding: 5px; }
             QPushButton { background-color: #EFEBE9; color: #3E2723; border: 1px solid #D7CCC8; padding: 5px 15px; border-radius: 4px; }
             QPushButton:hover { background-color: #D7CCC8; }
-        """)
+        """
+
+        estilo_contraste = """
+            QInputDialog { background-color: #000000; border: 2px solid #FFFF00; border-radius: 0px; }
+            QLabel { color: #FFFF00; font-weight: bold; font-size: 14px; }
+            QLineEdit { background-color: #000000; color: #FFFF00; border: 2px solid #FFFF00; border-radius: 0px; padding: 5px; }
+            QPushButton { background-color: #000000; color: #FFFF00; border: 2px solid #FFFF00; padding: 5px 15px; border-radius: 0px; }
+            QPushButton:hover { background-color: #333333; color: #FFFFFF; }
+        """
+
+        # Detección del tema actual
+        if hasattr(self.main_window, 'tema_actual') and self.main_window.tema_actual == 'contraste':
+            dlg.setStyleSheet(estilo_contraste)
+        else:
+            dlg.setStyleSheet(estilo_normal)
 
         if dlg.exec_() == QDialog.Accepted:
             nuevo = dlg.textValue().strip()
@@ -686,15 +750,15 @@ class KanbanColumn(QFrame):
             if self.manager.editar_columna(self.id_columna, nuevo):
                 self.titulo = nuevo
                 safe = nuevo.replace('&', '&amp;').replace('<', '&lt;').replace('>', '&gt;')
-                self.header_label.setText(f'<div style="word-break:break-all; white-space:normal; font-weight:bold; font-size:16px; color:#4E342E;">{safe}</div>')
+                self.header_label.setText(f'<div style="word-break:break-all; white-space:normal; font-weight:bold; font-size:16px;">{safe}</div>')
                 
                 fm = self.header_label.fontMetrics()
                 text_width = fm.horizontalAdvance(nuevo)
                 # Recalcula el ancho usando los objetos botón que ya existen
-                extra = self.btn_edit_col.width() + self.btn_delete_col.width() + 50
-                desired_width = max(260, text_width + extra)
+                extra = self.btn_edit_col.width() + self.btn_delete_col.width() + 60
+                desired_width = max(220, text_width + extra)
                 self.setMinimumWidth(desired_width)
-                self.setSizePolicy(QSizePolicy.Fixed, QSizePolicy.Expanding)
+                self.setSizePolicy(QSizePolicy.Minimum, QSizePolicy.Expanding)
                 
                 if hasattr(self.main_window, 'recargar_tablero_completo'):
                     self.main_window.recargar_tablero_completo()
@@ -713,3 +777,19 @@ class KanbanColumn(QFrame):
             if confirm == QMessageBox.Yes:
                 if self.manager.eliminar_columna(self.id_columna):
                     self.main_window.recargar_tablero_completo()
+
+    # Método para cambiar el estilo dinámicamente
+    def set_modo_visual(self, modo):
+        if modo == "contraste":
+            self.setStyleSheet(ESTILO_COLUMNA_CONTRASTE)
+            style_btns = """
+                QPushButton { background: transparent; border: none; color: #FFFF00; padding: 2px; }
+                QPushButton:hover { background: transparent; border: none; }
+            """
+            # Ajusta los iconos de los botones para que se vean en fondo negro
+            self.btn_edit_col.setStyleSheet(style_btns)
+            self.btn_delete_col.setStyleSheet(style_btns)
+        else:
+            self.setStyleSheet(ESTILO_COLUMNA_NORMAL)
+            self.btn_edit_col.setStyleSheet("background:transparent; border:none; padding:2px;")
+            self.btn_delete_col.setStyleSheet("background:transparent; border:none; padding:2px;")
