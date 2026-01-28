@@ -10,11 +10,12 @@ from src.managers.auth_manager import AuthManager
 from src.bd.conexion import db
 
 ESTILO_ADMIN_NORMAL = """
-    QMainWindow, QDialog, QWidget { background-color: #FAFAFA; color: #3E2723; }
+    QMainWindow, QDialog, QWidget { background-color: #FAFAFA; color: #3E2723; font-family: 'Segoe UI'; }
     QLabel { color: #3E2723; font-weight: bold; font-size: 14px; }
     
-    #TopBar { background-color: #4E342E; border-bottom: 3px solid #FFB74D; }
-    #HeaderTitle { color: #FFFFFF; font-weight: bold; font-size: 20px; }
+    /* [AÑADIDO] Estilos de cabecera que antes estaban en el .ui */
+    #frame_header { background-color: #FFFFFF; border-bottom: 2px solid #D7CCC8; }
+    #label_title { color: #3E2723; font-weight: bold; font-size: 20px; }
 
     QLineEdit, QComboBox { 
         background-color: #FFFFFF; color: #3E2723; 
@@ -25,50 +26,54 @@ ESTILO_ADMIN_NORMAL = """
         selection-background-color: #FFB74D; selection-color: #3E2723; 
     }
     
-    QTableWidget { 
-        background-color: #FFFFFF; color: #3E2723; 
-        gridline-color: #D7CCC8; border: 1px solid #D7CCC8; 
-    }
-    QHeaderView::section { 
-        background-color: #D7CCC8; color: #3E2723; padding: 4px; border: 1px solid #BCAAA4; 
-    }
-    
-    QTabWidget::pane { border: 1px solid #D7CCC8; background: #FAFAFA; }
-    QTabBar::tab { background: #EFEBE9; color: #3E2723; padding: 8px 12px; margin-right: 2px; border-top-left-radius: 4px; border-top-right-radius: 4px; }
-    QTabBar::tab:selected { background: #D7CCC8; font-weight: bold; }
+    /* Estilos de Pestañas y Tablas del .ui original */
+    QTabWidget::pane { border: 1px solid #D7CCC8; } 
+    QTabBar::tab { background: #EFEBE9; padding: 10px 20px; color: #5D4037; border-top-left-radius: 4px; border-top-right-radius: 4px; margin-right: 2px; }
+    QTabBar::tab:selected { background: #FFFFFF; font-weight: bold; border-top: 3px solid #FF9800; border-bottom: 1px solid #FFFFFF; }
 
+    QTableWidget { background-color: white; border: 1px solid #ddd; color: #333; gridline-color: #eee; }
+    QHeaderView::section { background-color: #f0f0f0; padding: 4px; border: 1px solid #ddd; }
+    
     QPushButton { 
         background-color: #EFEBE9; color: #3E2723; 
         border: 1px solid #D7CCC8; padding: 6px 15px; border-radius: 4px; 
     }
     QPushButton:hover { background-color: #D7CCC8; }
 
-    /* Colores Específicos Normales */
-    QPushButton#btn_add_user, QPushButton#btn_registrar, QPushButton#btn_save_dept { background-color: #4CAF50; color: white; font-weight: bold; } 
-    QPushButton#btn_add_board, QPushButton#btn_crear_tablero { background-color: #FF9800; color: white; font-weight: bold; }
-    QPushButton#btn_add_dept { background-color: #009688; color: white; font-weight: bold; }
-    QPushButton#btn_add_team { background-color: #673AB7; color: white; font-weight: bold; }
-    QPushButton#btn_promover { background-color: #2196F3; color: white; }
+    /* Restauración de colores de botones (Verde, Naranja, etc.) */
+    QPushButton#btn_add_user, QPushButton#btn_registrar, QPushButton#btn_save_dept { 
+        background-color: #4CAF50; color: white; font-weight: bold; border: none;
+    }
+    QPushButton#btn_add_board, QPushButton#btn_crear_tablero { 
+        background-color: #FF9800; color: white; font-weight: bold; border: none;
+    }
+    QPushButton#btn_add_dept { background-color: #009688; color: white; font-weight: bold; border: none; }
+    QPushButton#btn_add_team { background-color: #673AB7; color: white; font-weight: bold; border: none; }
+    QPushButton#btn_promover { background-color: #2196F3; color: white; border: none; }
     
-    QPushButton#btn_refresh, QPushButton#btn_refresh_users, QPushButton#btn_refresh_boards { 
-        background-color: #00BCD4; color: white; font-weight: bold; 
+    QPushButton#btn_back { 
+        background-color: #795548; color: white; font-weight: bold; border-radius: 4px; 
     }
     
-    QPushButton#btn_back { background-color: #5D4037; color: #FFB74D; border: 1px solid #FFB74D; font-weight:bold; }
-    QPushButton#btn_back:hover { background-color: #FFB74D; color: #3E2723; }
+    QPushButton#btn_refresh, QPushButton#btn_refresh_users, QPushButton#btn_refresh_boards { 
+         background-color: transparent; color: #00BCD4; font-weight: bold; border: 2px solid #00BCD4;
+    }
+    QPushButton#btn_refresh:hover, QPushButton#btn_refresh_users:hover, QPushButton#btn_refresh_boards:hover {
+         background-color: #E0F7FA;
+    }
 """
 
 ESTILO_ADMIN_CONTRASTE = """
     QMainWindow, QDialog, QWidget, QFrame { background-color: #000000; color: #FFFF00; }
-    
     QLabel { color: #FFFF00; font-weight: bold; font-size: 14px; background: transparent; }
 
-    #TopBar { background-color: #000000; border-bottom: 4px solid #FFFF00; }
-    #HeaderTitle { color: #FFFF00; font-size: 22px; text-decoration: underline; }
+    /* IDs actualizados para coincidir con el .ui (#frame_header) */
+    #frame_header { background-color: #000000; border-bottom: 4px solid #FFFF00; }
+    #label_title { color: #FFFF00; font-size: 22px; text-decoration: underline; }
     
+    /* Regla para contenedores de pestañas */
     #tab_users, #tab_boards, #tab_dept, #tab_equipos {
-        background-color: #000000;
-        border: none;
+        background-color: #000000; border: none;
     }
 
     QLineEdit, QComboBox { 
@@ -81,7 +86,7 @@ ESTILO_ADMIN_CONTRASTE = """
         border: 1px solid #FFFF00; 
     }
     
-    /* TABLAS: Fondo negro puro y borde amarillo */
+    /* Tablas forzadas a negro */
     QTableWidget, QTableView { 
         background-color: #000000; color: #FFFF00; 
         gridline-color: #FFFF00; border: 2px solid #FFFF00; 
@@ -89,32 +94,19 @@ ESTILO_ADMIN_CONTRASTE = """
     }
     QTableWidget::item:selected { background-color: #333333; color: #FFFF00; }
 
-    /* [AÑADIDO] ESTILOS ESPECÍFICOS PARA LA CABECERA (HEADER) */
-    QHeaderView {
-        background-color: #000000;
-        border: none;
-    }
+    QHeaderView { background-color: #000000; border: none; }
     QHeaderView::section { 
-        background-color: #000000; 
-        color: #FFFF00; 
-        padding: 5px; 
-        border: 1px solid #FFFF00; 
-        font-weight: bold; 
+        background-color: #000000; color: #FFFF00; 
+        padding: 5px; border: 1px solid #FFFF00; font-weight: bold; 
     }
-    /* La esquina superior izquierda de la tabla */
-    QTableCornerButton::section {
-        background-color: #000000;
-        border: 1px solid #FFFF00;
-    }
+    QTableCornerButton::section { background-color: #000000; border: 1px solid #FFFF00; }
 
     QTabWidget::pane { border: 2px solid #FFFF00; background-color: #000000; }
     QTabBar::tab { 
         background: #000000; color: #FFFF00; 
         border: 2px solid #FFFF00; padding: 8px 12px; margin-right: 4px; 
     }
-    QTabBar::tab:selected { 
-        background: #FFFF00; color: #000000; font-weight: bold; 
-    }
+    QTabBar::tab:selected { background: #FFFF00; color: #000000; font-weight: bold; }
 
     QPushButton { 
         background-color: #000000; color: #FFFF00; 
@@ -122,7 +114,7 @@ ESTILO_ADMIN_CONTRASTE = """
     }
     QPushButton:hover { background-color: #333333; color: #FFFFFF; border-color: #FFFFFF; }
 
-    /* BOTONES ESPECÍFICOS A NEGRO */
+    /* Forzar todos los botones a negro */
     QPushButton#btn_add_user, QPushButton#btn_add_board,
     QPushButton#btn_registrar, QPushButton#btn_crear_tablero, 
     QPushButton#btn_add_dept, QPushButton#btn_add_team, 
@@ -150,30 +142,8 @@ class AdminWindow(QMainWindow):
         ui_path = os.path.join(os.path.dirname(__file__), "../ui/admin.ui")
         uic.loadUi(ui_path, self)
 
-        self.frame_header.setStyleSheet("")       
-        self.frame_header.setObjectName("TopBar")
-
-        self.label_title.setStyleSheet("")        
-        self.label_title.setObjectName("HeaderTitle")
-
-        self.tabWidget.setStyleSheet("")
-
-        if hasattr(self, 'tab_users'):
-            self.tab_users.setStyleSheet("")
-            self.tab_users.setObjectName("tab_users")
-
-        if hasattr(self, 'tab_boards'):
-            self.tab_boards.setStyleSheet("")
-            self.tab_boards.setObjectName("tab_boards")
-
-        self.table_users.setStyleSheet("")
-        self.table_boards.setStyleSheet("")
-
-        self.btn_back.setStyleSheet("")
-        self.btn_add_user.setStyleSheet("")
-        self.btn_add_board.setStyleSheet("")
-        self.btn_refresh_users.setStyleSheet("")   
-        self.btn_refresh_boards.setStyleSheet("")
+        if hasattr(self, 'tab_users'): self.tab_users.setObjectName("tab_users")
+        if hasattr(self, 'tab_boards'): self.tab_boards.setObjectName("tab_boards")
 
         self.btn_back.setObjectName("btn_back")
         self.btn_add_user.setObjectName("btn_add_user")
