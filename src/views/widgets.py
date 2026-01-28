@@ -425,6 +425,14 @@ class KanbanCard(QFrame):
             # Restaura la sombra
             self.setStyleSheet(ESTILO_CARD_NORMAL)
 
+            # Restaura la sombra
+            shadow = QGraphicsDropShadowEffect()
+            shadow.setBlurRadius(10)
+            shadow.setXOffset(0)
+            shadow.setYOffset(2)
+            shadow.setColor(QColor(0, 0, 0, 30))
+            self.setGraphicsEffect(shadow)
+
     # Lógica para abrir el diálogo al hacer clic
     def abrir_detalle(self):
         dialogo = TareaDialog(self.id_tarea, self.text(), self.rol_usuario, self.manager, self)

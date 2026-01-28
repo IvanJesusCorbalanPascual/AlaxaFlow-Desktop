@@ -354,6 +354,10 @@ class MainWindow(QMainWindow):
 
             # Crea la tarjeta
             card = KanbanCard(t['id'], t['titulo'], self.rol, self.task_manager, nombre_asignado=nombre_str)
+
+            # Si el modo actual es contraste, aplica el estilo a la tarjeta recién creada.
+            if hasattr(self, 'tema_actual') and self.tema_actual == 'contraste':
+                card.set_modo_visual('contraste')
             
             # Conecta las señales
             card.request_delete.connect(self.eliminar_tarea_directa)
