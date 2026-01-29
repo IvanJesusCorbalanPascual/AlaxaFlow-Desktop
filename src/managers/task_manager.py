@@ -64,30 +64,33 @@ class TaskManager:
                 print("Sin conexión a la base de datos: no se pueden obtener columnas.")
                 return []
 
-            return db.client.table('columnas').select("*")\
+            response = db.client.table('columnas')\
+                .select('*')\
                 .eq('tablero_id', tablero_id)\
-                .order('orden').execute().data
+                .order('posicion')\
+                .execute()
+            return response.data
         except Exception as e:
             print(f"Error columnas: {e}")
             return []
 
     def crear_columna(self, tablero_id, titulo):
-        # Crea una nueva columna al final del tablero (orden incremental)
+        # Crea una nueva columna al final del tablero (posicion incremental)
         try:
-            # Obtener el mayor orden actual
-            res = db.client.table('columnas').select('orden')\
+            # Obtener la mayor posicion actual
+            res = db.client.table('columnas').select('posicion')\
                 .eq('tablero_id', tablero_id)\
-                .order('orden', desc=True).limit(1).execute()
+                .order('posicion', desc=True).limit(1).execute()
 
             if res.data and len(res.data) > 0:
-                nuevo_orden = res.data[0].get('orden', 0) + 1
+                nueva_posicion = res.data[0].get('posicion', 0) + 1
             else:
-                nuevo_orden = 1
+                nueva_posicion = 1
 
             insercion = db.client.table('columnas').insert({
                 'tablero_id': tablero_id,
                 'titulo': titulo,
-                'orden': nuevo_orden
+                'posicion': nueva_posicion
             }).execute()
 
             return insercion.data is not None
@@ -244,68 +247,59 @@ class TaskManager:
 
     def obtener_todos_usuarios(self):
         try:
-            if not db.client:
-                print("Sin conexión a la base de datos: no se pueden listar usuarios.")
-                return []
-
-            usuarios = []
-
-            # Pre-fetch equipos para mapear departamento_id para trabajadores y líderes
-            # ya que ellos tienen equipo_id pero no necesariamente departamento_id directo en su tabla
-            equipo_to_dept = {}
-            try:
-                res_eq = db.client.table('equipos').select('id, departamento_id').execute()
-                for eq in res_eq.data:
-                    equipo_to_dept[eq['id']] = eq['departamento_id']
-            except Exception: pass
-
-            # 1. Admins
-            try:
-                res = db.client.table('admins').select('*').execute()
-                for u in res.data:
-                    u['nivel_acceso'] = 'admin'
-                    u['departamento_id'] = None
-                    u['equipo_id'] = None
-                    usuarios.append(u)
-            except Exception as e: print(f"Error fetching admins: {e}")
-
-            # 2. Managers
-            try:
-                res = db.client.table('managers').select('*').execute()
-                for u in res.data:
-                    u['nivel_acceso'] = 'manager'
-                    u['equipo_id'] = None
-                    # Managers deberian tener departamento_id directo
-                    usuarios.append(u)
-            except Exception as e: print(f"Error fetching managers: {e}")
-
-            # 3. Lideres
-            try:
-                res = db.client.table('lideres_equipo').select('*').execute()
-                for u in res.data:
-                    u['nivel_acceso'] = 'lider_equipo'
-                    # Resolver departamento desde el equipo
-                    eq_id = u.get('equipo_id')
-                    u['departamento_id'] = equipo_to_dept.get(eq_id)
-                    usuarios.append(u)
-            except Exception as e: print(f"Error fetching leaders: {e}")
-
-            # 4. Trabajadores
-            try:
-                res = db.client.table('trabajadores').select('*').execute()
-                for u in res.data:
-                    u['nivel_acceso'] = 'trabajador'
-                    # Resolver departamento desde el equipo
-                    eq_id = u.get('equipo_id')
-                    u['departamento_id'] = equipo_to_dept.get(eq_id)
-                    usuarios.append(u)
-            except Exception as e: print(f"Error fetching workers: {e}")
-
-            return usuarios
+            # Ahora todo está en 'perfiles', mucho más fácil
+            res = db.client.table('perfiles').select('*').execute()
+            return res.data
         except Exception as e:
             print(f"Error listando usuarios: {e}")
             return []
+        
+    def obtener_admins(self):
+        try:
+            return db.client.table('perfiles').select('*').eq('nivel_acceso', 'admin').execute().data
+        except: return []
+        
+        # --- GESTIÓN DE USUARIOS (CRUD) ---
+    def editar_usuario(self, user_id, nombre, apellidos, rol, dept_id, equipo_id):
+        try:
+            data = {
+                "nombre": nombre,
+                "apellidos": apellidos,
+                "nivel_acceso": rol,
+                "departamento_id": dept_id if dept_id else None,
+                "equipo_id": equipo_id if equipo_id else None
+            }
+            db.client.table('perfiles').update(data).eq('id', user_id).execute()
+            return True
+        except Exception as e:
+            print(f"Error editando usuario: {e}")
+            return False
 
+    def eliminar_usuario(self, user_id):
+        try:
+            # Borrado limpio
+            db.client.table('perfiles').delete().eq('id', user_id).execute()
+            return True
+        except Exception as e:
+            print(f"Error eliminando usuario: {e}")
+            return False
+
+    def obtener_managers(self):
+        try:
+            return db.client.table('perfiles').select('*').eq('nivel_acceso', 'manager').execute().data
+        except: return []
+
+    def obtener_lideres(self):
+        try:
+            return db.client.table('perfiles').select('*').eq('nivel_acceso', 'lider_equipo').execute().data
+        except: return []
+
+    def obtener_trabajadores(self):
+        try:
+            return db.client.table('perfiles').select('*').eq('nivel_acceso', 'trabajador').execute().data
+        except: return []
+
+    # --- GESTIÓN DE TABLEROS (CRUD) ---
     def obtener_todos_tableros(self):
         try:
             if not db.client:
@@ -347,6 +341,29 @@ class TaskManager:
             print(f"Error creando tablero admin: {e}")
             return False
 
+    def editar_tablero(self, tablero_id, titulo, descripcion, owner_id):
+        try:
+            data = {
+                "titulo": titulo,
+                "descripcion": descripcion,
+                "creado_por": owner_id
+            }
+            db.client.table('tableros').update(data).eq('id', tablero_id).execute()
+            return True
+        except Exception as e:
+            print(f"Error editando tablero: {e}")
+            return False
+
+    def eliminar_tablero(self, tablero_id):
+        try:
+            # Primero borrar columnas y tareas (Cascada manual si no está en BD)
+            # Supabase suele tener ON DELETE CASCADE, probamos directo:
+            db.client.table('tableros').delete().eq('id', tablero_id).execute()
+            return True
+        except Exception as e:
+            print(f"Error eliminando tablero: {e}")
+            return False
+        
     # --- GESTIÓN DE DEPARTAMENTOS ---
     def obtener_departamentos(self):
         try:
@@ -391,39 +408,30 @@ class TaskManager:
             print(f"Error obteniendo equipos: {e}")
             return []
 
-    def crear_equipo(self, nombre, departamento_id, lider_id, descripcion, manager_id=None):
+    def crear_equipo(self, nombre, dept_id, lider_id, descripcion, manager_id=None):
         try:
             if not db.client: return False
             
             # 1. Insertar equipo SIN lider/manager para romper dependencia circular
-            data_init = {
+            data_equipo = {
                 'nombre': nombre,
-                'departamento_id': departamento_id,
+                'departamento_id': dept_id,
                 'descripcion': descripcion,
                 'lider_id': None,
                 'manager_id': None 
             }
-            res = db.client.table('equipos').insert(data_init).execute()
-            if not res.data: return False
+            res = db.client.table('equipos').insert(data_equipo).execute()
             
-            new_equipo_id = res.data[0]['id']
-            
-            # 2. Promover Usuarios
-            if manager_id:
-                self._mover_usuario_de_tabla(manager_id, 'manager', equipo_id=None, dept_id=departamento_id)
-            
-            if lider_id:
-                self._mover_usuario_de_tabla(lider_id, 'lider_equipo', equipo_id=new_equipo_id, dept_id=departamento_id)
+            if res.data:
+                nuevo_equipo_id = res.data[0]['id']
                 
-            # 3. Actualizar Equipo
-            data_update = {}
-            if lider_id: data_update['lider_id'] = lider_id
-            if manager_id: data_update['manager_id'] = manager_id
-            
-            if data_update:
-                db.client.table('equipos').update(data_update).eq('id', new_equipo_id).execute()
-
-            return True
+                # 2. Si hay líder asignado, actualizar su perfil
+                if lider_id:
+                    # Lo ascendemos a 'lider_equipo' y le asignamos este equipo
+                    self._mover_usuario_de_tabla(lider_id, 'lider_equipo', dept_id=dept_id, equipo_id=nuevo_equipo_id)
+                
+                return True
+            return False
         except Exception as e:
             print(f"Error creando equipo: {e}")
             return False
@@ -462,108 +470,28 @@ class TaskManager:
             print(f"Error editando equipo: {e}")
             return False
 
-    def _mover_usuario_de_tabla(self, user_id, nuevo_rol_objetivo, equipo_id=None, dept_id=None):
+    def _mover_usuario_de_tabla(self, user_id, nuevo_rol, dept_id=None, equipo_id=None):
         """
         Mueve al usuario de su tabla actual a la tabla correspondiente al nuevo rol.
         Simula una 'promocion' cambiando la tabla donde reside el registro.
         USA CLIENTE ADMIN.
         """
         try:
-            admin_client = self._get_admin_client()
-            if not admin_client: return
-
-            print(f"[DEBUG] _mover_usuario_de_tabla: User {user_id} -> {nuevo_rol_objetivo}")
+            print(f"[DEBUG] Actualizando rol usuario {user_id} -> {nuevo_rol}")
             
-            # 1. Determinar rol actual (tabla origen) y obtener datos básicos
-            user_data = None
-            tabla_origen = None
+            data = {'nivel_acceso': nuevo_rol}
             
-            # Intento Trabajador
-            res = admin_client.table('trabajadores').select('*').eq('id', user_id).execute()
-            if res.data:
-                user_data = res.data[0]
-                tabla_origen = 'trabajadores'
-            else:
-                 # Intento Lider
-                 res = admin_client.table('lideres_equipo').select('*').eq('id', user_id).execute()
-                 if res.data:
-                     user_data = res.data[0]
-                     tabla_origen = 'lideres_equipo'
-                 else:
-                     # Intento Manager
-                     res = admin_client.table('managers').select('*').eq('id', user_id).execute()
-                     if res.data:
-                        user_data = res.data[0]
-                        tabla_origen = 'managers'
-            
-            # Si no esta en tablas publicas, quizas es nuevo? Asumimos que debe existir.
-            if not user_data:
-                print(f"[DEBUG] User {user_id} not found in any known public table.")
-                return
-
-            nombre = user_data.get('nombre')
-            email = user_data.get('email')
-            
-            # 2. DELETE de tabla origen (Para evitar unique constraint en posibles triggers o logica global)
-            print(f"[DEBUG] Deleting from {tabla_origen}")
-            admin_client.table(tabla_origen).delete().eq('id', user_id).execute()
-            
-            # 3. INSERT en tabla destino
-            try:
-                new_data = {
-                    'id': user_id,
-                    'nombre': nombre,
-                    'email': email
-                }
-
-                if nuevo_rol_objetivo == 'lider_equipo':
-                    # Lider requires equipe_id and manager_id
-                    manager_del_equipo = None
-                    if equipo_id:
-                        eq_data = admin_client.table('equipos').select('*').eq('id', equipo_id).single().execute()
-                        if eq_data.data:
-                             manager_del_equipo = eq_data.data.get('manager_id')
-                             # Fallback: buscar manager del departamento
-                             if not manager_del_equipo:
-                                 dept_id_eq = eq_data.data.get('departamento_id')
-                                 if dept_id_eq:
-                                     man_res = admin_client.table('managers').select('id').eq('departamento_id', dept_id_eq).limit(1).execute()
-                                     if man_res.data: manager_del_equipo = man_res.data[0]['id']
-
-                    # Si aun asi no hay manager... usamos UUID default o esperamos fallo.
-                    new_data['equipo_id'] = equipo_id
-                    new_data['manager_id'] = manager_del_equipo
-                    
-                    admin_client.table('lideres_equipo').insert(new_data).execute()
-
-                elif nuevo_rol_objetivo == 'manager':
-                    if not dept_id and user_data.get('equipo_id'):
-                         eq_res = admin_client.table('equipos').select('departamento_id').eq('id', user_data['equipo_id']).single().execute()
-                         if eq_res.data: dept_id = eq_res.data['departamento_id']
-                    
-                    new_data['departamento_id'] = dept_id
-                    admin_client.table('managers').insert(new_data).execute()
-
-                elif nuevo_rol_objetivo == 'trabajador':
-                    # Requiere equipo_id
-                    # Si no pasamos equipo_id, intentamos mantener el anterior si venia de Lider
-                    if not equipo_id and user_data.get('equipo_id'):
-                        equipo_id = user_data.get('equipo_id')
-                    
-                    if equipo_id:
-                         new_data['equipo_id'] = equipo_id
-                         admin_client.table('trabajadores').insert(new_data).execute()
-                    else:
-                        print("ERROR: Trabajador requiere equipo_id")
-
-                print(f"[DEBUG] Moved user to {nuevo_rol_objetivo}")
-
-            except Exception as insert_err:
-                print(f"CRITICAL ERROR moving user (Insert failed): {insert_err}")
-                # INTENTO DE ROLLBACK (Opcional, manual)
-
+            # Si nos pasan departamento o equipo, también los actualizamos
+            if dept_id:
+                data['departamento_id'] = dept_id
+            if equipo_id is not None: # Permitir None para limpiar equipo
+                data['equipo_id'] = equipo_id
+                
+            db.client.table('perfiles').update(data).eq('id', user_id).execute()
+            return True
         except Exception as e:
-            print(f"Error _mover_usuario_de_tabla ({user_id}): {e}")
+            print(f"Error actualizando rol: {e}")
+            return False
 
     def editar_departamento(self, dept_id, nombre, descripcion):
         try:

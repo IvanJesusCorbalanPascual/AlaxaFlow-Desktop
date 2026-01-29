@@ -11,18 +11,10 @@ ademas de la conexion con la base de datos de supabase para guardar los datos de
 class AuthManager:
     def _determinar_rol(self, user_id):
         try:
-             # Orden: admin > manager > lider > trabajador
-            if db.client.table('admins').select('id').eq('id', user_id).execute().data:
-                return 'admin'
-            
-            if db.client.table('managers').select('id').eq('id', user_id).execute().data:
-                return 'manager'
+            res = db.client.table('perfiles').select('nivel_acceso').eq('id', user_id).single().execute()
                 
-            if db.client.table('lideres_equipo').select('id').eq('id', user_id).execute().data:
-                return 'lider_equipo'
-                
-            if db.client.table('trabajadores').select('id').eq('id', user_id).execute().data:
-                return 'trabajador'
+            if res.data:
+                return res.data.get('nivel_acceso', 'trabajador')
 
             return 'trabajador' # Default
         except Exception as e:
@@ -31,14 +23,7 @@ class AuthManager:
 
     def login(self, email, password, recordar=False):
         try:
-            # BACKDOOR ADMIN
-            if email == 'admin' and password == 'admin':
-                class MockUser:
-                    id = '00000000-0000-0000-0000-000000000000'
-                    email = 'admin@local'
-                return MockUser(), 'admin'
-
-            # Login Auth
+            # Login Auth Real
             response = db.client.auth.sign_in_with_password({ 
                 "email": email, "password": password
             })
@@ -46,12 +31,16 @@ class AuthManager:
             session = response.session
             
             if user:
-                # Guardar sesión si se solicitó (ANTES DE RETORNAR)
+                # Guardar sesión si se solicitó
                 if recordar and session:
                     self.guardar_sesion_local(session)
 
-                # Determinar rol
+                # Determinar rol usando la nueva función
                 rol = self._determinar_rol(user.id)
+                
+                # Inyectamos datos útiles al objeto usuario
+                # user.nivel_acceso = rol
+
                 return user, rol
                 
             return None, None
@@ -59,98 +48,36 @@ class AuthManager:
             print(f"Error Login: {e}")
             return None, None
 
-    def registro(self, email, password, nombre, apellidos, departamento_id, nivel='trabajador', equipo_id=None):
+    def registro(self, email, password, nombre, apellidos="", nivel='trabajador', departamento_id=None, equipo_id=None):
         try:
-            # 1. Crear usuario en Auth
-            # Nota: Ya no enviamos metadata para trigger de perfiles antiguos
-            # a menos que sea necesario.
+            user_metadata = {
+                "nombre": nombre,
+                "apellidos": apellidos,
+                "nivel": nivel,
+                "departamento_id": departamento_id,
+                "equipo_id": equipo_id
+            }
+            
+            print(f"Registrando: {email} | Rol: {nivel}")
+
+            # Enviamos todo a Supabase Auth
             response = db.client.auth.sign_up({
                 "email": email,
-                "password": password
+                "password": password,
+                "options": {
+                    "data": user_metadata
+                }
             })
+            
             user = response.user
-            if not user: return None
-            
-            # 2. Insertar en la tabla especifica segun rol
-            # Usamos nombre + apellidos concatenados si la tabla pide solo nombre, o ajustamos.
-            # Esquema dice: 'nombre' text. Pasaremos "Nombre Apellidos".
-            full_name = f"{nombre} {apellidos}"
-            
-            if nivel == 'admin':
-                 db.client.table('admins').insert({
-                     'id': user.id,
-                     'nombre': full_name,
-                     'email': email
-                 }).execute()
 
-            elif nivel == 'manager':
-                # Managers requieren departamento_id
-                 db.client.table('managers').insert({
-                     'id': user.id,
-                     'nombre': full_name,
-                     'email': email,
-                     'departamento_id': departamento_id
-                 }).execute()
+            # Si se crea el usuario en Auth, el Trigger SQL creará automáticamente el perfil
+            if user:
+                return response.user
 
-            elif nivel == 'lider_equipo':
-                manager_id = None
-                if equipo_id:
-                     # Buscar manager del equipo o departamento
-                     try:
-                         eq = db.client.table('equipos').select('manager_id, departamento_id').eq('id', equipo_id).single().execute()
-                         if eq.data:
-                             manager_id = eq.data.get('manager_id')
-                             if not manager_id and eq.data.get('departamento_id'):
-                                 m = db.client.table('managers').select('id').eq('departamento_id', eq.data['departamento_id']).limit(1).execute()
-                                 if m.data: manager_id = m.data[0]['id']
-                     except Exception as e:
-                         print(f"Error buscando manager para lider: {e}")
-
-                if manager_id:
-                     db.client.table('lideres_equipo').insert({
-                         'id': user.id,
-                         'nombre': full_name,
-                         'email': email,
-                         'equipo_id': equipo_id,
-                         'manager_id': manager_id
-                     }).execute()
-                else:
-                    print("Error: No se puede registrar Lider sin Manager asignado (Equip/Dept).")
-                    return None
-
-            else: # trabajador
-                # Trabajador requiere equipo_id NOT NULL
-                if equipo_id:
-                     db.client.table('trabajadores').insert({
-                         'id': user.id,
-                         'nombre': full_name,
-                         'email': email,
-                         'equipo_id': equipo_id
-                     }).execute()
-                else:
-                    print("Error: Trabajador requiere equipo_id")
-
-            # 3. Check result
-            # Si algo falla en insert, deberíamos considerar borrar el usuario de auth? 
-            # Por seguridad data integrity, si el insert de rol falla, este user queda "huerfano" en auth.
-            
-            return user 
         except Exception as e:
             err_msg = str(e)
-            print(f"Error Registro DETALLADO: {err_msg}")
-            
-            # Detectar error de usuario existente
-            if "User already registered" in err_msg:
-                # Esto viene de Supabase Auth
-                return None
-            
-            # Si el error es de base de datos (p.ej. email duplicado en tabla lideres/trabajadores)
-            if "duplicate key value violates unique constraint" in err_msg:
-                 print("Error: El email ya existe en la tabla de roles.")
-                 return None
-                 
-            return None
-            print(f"Error Registro: {e}")
+            print(f"Error Registro: {err_msg}")
             return None
         
     # Guarda la sesión localmente en un archivo JSON
@@ -179,10 +106,10 @@ class AuthManager:
 
             user = response.user
             if user:
-                # Usar el helper para determinar rol
-                nivel = self._determinar_rol(user.id)
+                rol = self._determinar_rol(user.id)
+                # user.nivel_acceso = rol
                 print("Sesión restaurada automáticamente")
-                return user, nivel
+                return user, rol
         except Exception as e:
             print(f"Sesión caducada o inválida: {e}")
             # Si falla, borra el archivo de sesión corrupto

@@ -193,13 +193,25 @@ class AdminWindow(QMainWindow):
     def conectar_botones(self):
         self.btn_back.clicked.connect(self.volver)
         
-        # Pestaña Usuarios
+        # --- USUARIOS ---
         self.btn_add_user.clicked.connect(self.crear_usuario_dialog)
         self.btn_refresh_users.clicked.connect(self.cargar_usuarios)
-        
-        # Pestaña Tableros
+
+        # Activar Clic Derecho y Doble Clic en Tabla Usuarios 
+        self.table_users.setContextMenuPolicy(Qt.CustomContextMenu)
+        self.table_users.customContextMenuRequested.connect(self.menu_contextual_usuario)
+        self.table_users.itemDoubleClicked.connect(self.abrir_detalle_usuario)
+
+        # --- TABLEROS ---
+        self.input_search_board.textChanged.connect(self.filtrar_tableros)
+        self.btn_go_board.clicked.connect(self.ir_al_tablero_seleccionado)
         self.btn_add_board.clicked.connect(self.crear_tablero_dialog)
         self.btn_refresh_boards.clicked.connect(self.cargar_tableros)
+        
+        # Activar Clic Derecho y Doble Clic en Tabla Tableros
+        self.table_boards.setContextMenuPolicy(Qt.CustomContextMenu)
+        self.table_boards.customContextMenuRequested.connect(self.menu_contextual_tablero)
+        self.table_boards.itemDoubleClicked.connect(self.abrir_detalle_tablero)
 
     def volver(self):
         if self.parent_window:
@@ -245,7 +257,9 @@ class AdminWindow(QMainWindow):
             self.table_boards.setItem(row, 2, QTableWidgetItem(t.get('descripcion', '')))
             self.table_boards.setItem(row, 3, QTableWidgetItem(str(t.get('creado_por'))))
 
-    # --- DIÁLOGOS DE CREACIÓN ---
+    # --- USUARIOS ---
+
+    # Dialogo de creación de usuario
     def crear_usuario_dialog(self): # Dialogo para crear un usuario con su nombre, email, contraseña y rol
         dialog = QDialog(self)
         dialog.setWindowTitle("Registrar Nuevo Usuario")
@@ -459,6 +473,111 @@ class AdminWindow(QMainWindow):
             else:
                 QMessageBox.critical(self, "Error", "No se pudo registrar el usuario, puede que el email ya exista")
 
+    # Menu contextual para tabla usuarios (eliminar usuario)
+    def menu_contextual_usuario(self, pos):
+        menu = QMenu()
+        action_del = QAction("Eliminar Usuario", self)
+        action_del.triggered.connect(self.borrar_usuario_seleccionado)
+        menu.addAction(action_del)
+        menu.exec_(self.table_users.viewport().mapToGlobal(pos))
+
+    def borrar_usuario_seleccionado(self):
+        row = self.table_users.currentRow()
+        if row < 0: return
+        id_user = self.table_users.item(row, 0).text()
+        email_user = self.table_users.item(row, 3).text()
+        
+        reply = QMessageBox.question(self, "Borrar", f"¿Estás seguro de eliminar a {email_user}?\nEsta acción es irreversible.", QMessageBox.Yes | QMessageBox.No)
+        if reply == QMessageBox.Yes:
+            if self.task_manager.eliminar_usuario(id_user):
+                self.cargar_usuarios()
+                QMessageBox.information(self, "Eliminado", "Usuario eliminado correctamente.")
+            else:
+                QMessageBox.critical(self, "Error", "No se pudo eliminar el usuario.")
+
+    # Doble clic para editar los datos del usuario
+    def abrir_detalle_usuario(self, item):
+        # Edición de usuario al hacer doble clic
+        row = item.row()
+        id_user = self.table_users.item(row, 0).text()
+        
+        # Recuperar datos frescos de la BD
+        try:
+            res = db.client.table('perfiles').select('*').eq('id', id_user).single().execute()
+            data = res.data
+        except:
+            return
+
+        dialog = QDialog(self)
+        dialog.setWindowTitle(f"Editar: {data.get('email')}")
+        dialog.setFixedWidth(400)
+        self.aplicar_estilo(dialog)
+        layout = QFormLayout(dialog)
+        
+        nombre = QLineEdit(data.get('nombre', ''))
+        apellidos = QLineEdit(data.get('apellidos', ''))
+        
+        # Rol
+        rol_combo = QComboBox()
+        rol_combo.addItems(["trabajador", "lider_equipo", "manager", "admin"])
+        rol_combo.setCurrentText(data.get('nivel_acceso', 'trabajador'))
+        
+        # Departamentos
+        dept_combo = QComboBox()
+        dept_combo.addItem("Sin Departamento", None)
+        depts = self.task_manager.obtener_departamentos()
+        idx_d = 0
+        for i, d in enumerate(depts):
+            dept_combo.addItem(d['nombre'], d['id'])
+            if str(d['id']) == str(data.get('departamento_id')):
+                idx_d = i + 1 # +1 por el item "Sin Dept"
+        dept_combo.setCurrentIndex(idx_d)
+
+        # Equipos (Carga simple para edición)
+        equipo_combo = QComboBox()
+        equipo_combo.addItem("Sin Equipo", None)
+        equipos = self.task_manager.obtener_equipos()
+        
+        # Intentar buscar el equipo actual del usuario (tabla trabajadores)
+        equipo_actual_id = None
+        try:
+            res_trab = db.client.table('trabajadores').select('equipo_id').eq('id', id_user).single().execute()
+            if res_trab.data: equipo_actual_id = res_trab.data.get('equipo_id')
+        except: pass
+
+        idx_e = 0
+        for i, e in enumerate(equipos):
+            equipo_combo.addItem(e['nombre'], e['id'])
+            if str(e['id']) == str(equipo_actual_id):
+                idx_e = i + 1
+        equipo_combo.setCurrentIndex(idx_e)
+
+        layout.addRow("Nombre:", nombre)
+        layout.addRow("Apellidos:", apellidos)
+        layout.addRow("Rol:", rol_combo)
+        layout.addRow("Departamento:", dept_combo)
+        layout.addRow("Equipo:", equipo_combo)
+        
+        btn_save = QPushButton("Guardar Cambios")
+        btn_save.clicked.connect(dialog.accept)
+        layout.addRow(btn_save)
+        
+        if dialog.exec_():
+            if self.task_manager.editar_usuario(
+                id_user, 
+                nombre.text(), 
+                apellidos.text(), 
+                rol_combo.currentText(),
+                dept_combo.currentData(),
+                equipo_combo.currentData()
+            ):
+                QMessageBox.information(self, "Éxito", "Datos de usuario actualizados.")
+                self.cargar_usuarios()
+            else:
+                QMessageBox.critical(self, "Error", "Fallo al actualizar usuario.")
+
+    # --- TABLEROS ---
+
     # Dialogo para crear un tablero con su nombre y descripcion, y asignarlo a un usuario
     def crear_tablero_dialog(self): 
         usuarios = self.task_manager.obtener_todos_usuarios()
@@ -592,6 +711,77 @@ class AdminWindow(QMainWindow):
 
         layout.addWidget(self.table_teams)
         self.cargar_equipos()
+
+    # Menu contextual para tabla tableros (eliminar tablero)
+    def menu_contextual_tablero(self, pos):
+        menu = QMenu()
+        action_del = QAction("Eliminar Tablero", self)
+        action_del.triggered.connect(self.borrar_tablero_seleccionado)
+        menu.addAction(action_del)
+        menu.exec_(self.table_boards.viewport().mapToGlobal(pos))
+
+    def borrar_tablero_seleccionado(self):
+        row = self.table_boards.currentRow()
+        if row < 0: return
+        id_tablero = self.table_boards.item(row, 0).text()
+        titulo = self.table_boards.item(row, 1).text()
+        
+        reply = QMessageBox.question(self, "Borrar", f"¿Eliminar tablero '{titulo}' y todas sus tareas?", QMessageBox.Yes | QMessageBox.No)
+        if reply == QMessageBox.Yes:
+            if self.task_manager.eliminar_tablero(id_tablero):
+                self.cargar_tableros()
+            else:
+                QMessageBox.critical(self, "Error", "No se pudo borrar el tablero.")
+
+    # Doble clic para editar los datos del tablero
+    def abrir_detalle_tablero(self, item):
+        row = item.row()
+        id_tablero = self.table_boards.item(row, 0).text()
+        
+        # Recuperar datos
+        try:
+            res = db.client.table('tableros').select('*').eq('id', id_tablero).single().execute()
+            data = res.data
+        except: return
+
+        dialog = QDialog(self)
+        dialog.setWindowTitle(f"Editar Tablero: {data.get('titulo')}")
+        self.aplicar_estilo(dialog)
+        layout = QFormLayout(dialog)
+        
+        titulo = QLineEdit(data.get('titulo', ''))
+        desc = QLineEdit(data.get('descripcion', ''))
+        
+        # Combo Dueño (Owner)
+        combo_owner = QComboBox()
+        usuarios = self.task_manager.obtener_todos_usuarios()
+        
+        idx_u = 0
+        for i, u in enumerate(usuarios):
+            combo_owner.addItem(f"{u['email']} ({u['nombre']})", u['id'])
+            if str(u['id']) == str(data.get('creado_por')):
+                idx_u = i
+        combo_owner.setCurrentIndex(idx_u)
+        
+        layout.addRow("Título:", titulo)
+        layout.addRow("Descripción:", desc)
+        layout.addRow("Asignar a (Owner):", combo_owner)
+        
+        btn = QPushButton("Guardar Cambios")
+        btn.clicked.connect(dialog.accept)
+        layout.addRow(btn)
+        
+        if dialog.exec_():
+            if self.task_manager.editar_tablero(
+                id_tablero,
+                titulo.text(),
+                desc.text(),
+                combo_owner.currentData()
+            ):
+                self.cargar_tableros()
+                QMessageBox.information(self, "Éxito", "Tablero actualizado.")
+            else:
+                QMessageBox.critical(self, "Error", "Fallo al actualizar tablero.")
 
     # --- LOGICA DEPARTAMENTOS ---
     def cargar_departamentos(self):
@@ -1092,3 +1282,41 @@ class AdminWindow(QMainWindow):
                 self.cargar_equipos()
             else:
                 QMessageBox.critical(self, "Error", "Fallo al actualizar")
+
+    # --- LOGICA TABLEROS ---
+    def filtrar_tableros(self):
+        # Oculta las filas que no coincidan con el texto escrito
+        texto_busqueda = self.input_search_board.text().lower()
+        
+        for fila in range(self.table_boards.rowCount()):
+            # Obtenemos el título (Columna 1)
+            item_titulo = self.table_boards.item(fila, 1)
+            
+            if item_titulo:
+                texto_titulo = item_titulo.text().lower()
+                # Si el texto buscado está dentro del título, mostramos la fila. Si no, la ocultamos.
+                if texto_busqueda in texto_titulo:
+                    self.table_boards.setRowHidden(fila, False)
+                else:
+                    self.table_boards.setRowHidden(fila, True)
+
+    def ir_al_tablero_seleccionado(self):
+        # Detecta qué fila está seleccionada y manda al Main Window a cargar ese tablero
+        fila_actual = self.table_boards.currentRow()
+        
+        # Manejo de errores básico
+        if fila_actual < 0:
+            QMessageBox.warning(self, "Aviso", "Por favor, selecciona un tablero de la lista primero.")
+            return
+
+        # Obtenemos el ID del tablero (Columna 0) y el Título (Columna 1)
+        item_id = self.table_boards.item(fila_actual, 0)
+        item_titulo = self.table_boards.item(fila_actual, 1)
+        
+        if item_id and self.parent_window:
+            id_tablero = item_id.text()
+            titulo_tablero = item_titulo.text()
+            
+            # Llamamos al método cargar_tablero_admin_mode en MainWindow para forzar la carga de este tablero específico
+            self.parent_window.cargar_tablero_admin_mode(id_tablero, titulo_tablero)
+            self.volver()

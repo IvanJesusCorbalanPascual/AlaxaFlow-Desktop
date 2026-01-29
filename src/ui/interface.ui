@@ -191,7 +191,7 @@ font-size:20px;</string>
           <string notr="true">color:white;</string>
          </property>
          <property name="text">
-          <string>Cerrar Sesión</string>
+          <string>🚪 Cerrar Sesión</string>
          </property>
         </widget>
        </item>

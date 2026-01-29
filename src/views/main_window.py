@@ -291,6 +291,10 @@ class MainWindow(QMainWindow):
             QMessageBox.critical(self, "Error", "No se pudo cargar ningún tablero.")
 
     def recargar_tablero_completo(self):
+        if self.tablero_actual:
+            titulo = self.tablero_actual.get('titulo', 'Sin Nombre')
+            self.lblTableroActual.setText(f"{titulo}")
+
         # Limpia visualmente el tablero
         while self.tablero_layout.count():
             item = self.tablero_layout.takeAt(0)
@@ -461,3 +465,17 @@ class MainWindow(QMainWindow):
         self.admin_window = AdminWindow(self.usuario, parent_window=self)
         self.admin_window.show()
         self.hide()
+
+    def cargar_tablero_admin_mode(self, id_tablero, titulo_tablero):
+        # Permite al administrador forzar la visualización de un tablero específico.
+        print(f"Admin entrando al tablero: {titulo_tablero}")
+        
+        # Cambiamos el 'chip' del tablero actual manualmente
+        self.tablero_actual = {
+            'id': id_tablero,
+            'titulo': titulo_tablero
+        }
+        self.HeaderTitle.setText(f"{titulo_tablero} (VISTA ADMIN)")
+        
+        # Forzamos la recarga de columnas y tareas de ESE tablero
+        self.recargar_tablero_completo()
