@@ -5,7 +5,21 @@ from PyQt5.QtGui import QIcon
 from src.views.main_window import MainWindow, ESTILO_NORMAL
 from src.views.login_window import LoginDialog
 from src.managers.auth_manager import AuthManager
-        
+
+import sys
+import os
+
+# --- Para compilar correctamente el programa ---
+def resolver_ruta(ruta_relativa):
+    # Obtiene la ruta absoluta al recurso, funciona para dev y para PyInstaller
+    try:
+        # PyInstaller crea una carpeta temporal y guarda la ruta en _MEIPASS
+        base_path = sys._MEIPASS
+    except Exception:
+        base_path = os.path.abspath(".")
+
+    return os.path.join(base_path, ruta_relativa)
+
 if __name__ == "__main__":
     # Para que Windows muestre el icono 'Alaxa' en la barra de tareas
     try:
@@ -15,7 +29,7 @@ if __name__ == "__main__":
         pass
 
     ruta_base = os.path.dirname(os.path.abspath(__file__))
-    ruta_icono = os.path.join(ruta_base, "assets", "logoAlaxa.png")
+    ruta_icono = resolver_ruta(os.path.join("assets", "logoAlaxa.ico"))
 
     app = QApplication(sys.argv)
     app.setStyleSheet(ESTILO_NORMAL)
@@ -49,7 +63,5 @@ if __name__ == "__main__":
     
         # Ejecuta la app
         sys.exit(app.exec_())
-
     else:
-        # Si se cierra el login sin entrar, cierra el programa
         sys.exit()

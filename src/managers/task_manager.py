@@ -21,12 +21,12 @@ class TaskManager:
     # --- GESTIÓN DE TABLEROS ---
     def obtener_o_crear_tablero_inicial(self, usuario_id):
         try:
-            # 1. Buscar equipo del usuario en su perfil
+            # Buscar equipo del usuario en su perfil
             perfil = db.client.table('perfiles').select('equipo_id').eq('id', usuario_id).single().execute()
             
             if perfil.data and perfil.data.get('equipo_id'):
                 eq_id = perfil.data['equipo_id']
-                # 2. Buscar si ese equipo tiene tablero asignado
+                # Buscar si ese equipo tiene tablero asignado
                 tabs = db.client.table('tableros').select('*').eq('equipo_id', eq_id).execute()
                 if tabs.data: 
                     return tabs.data[0]
@@ -173,7 +173,7 @@ class TaskManager:
 
     def eliminar_tarea(self, id_tarea, nivel_acceso):
         # Solo Admin o Manager pueden borrar tareas
-        if nivel_acceso not in ['admin', 'manager']:
+        if nivel_acceso not in ['admin', 'manager', 'lider_equipo']:
             print("Solo Admin o Manager pueden borrar.")
             return False
         try:
@@ -310,11 +310,11 @@ class TaskManager:
 
     def crear_tablero_admin(self, titulo, descripcion, equipo_id):
         try:
-            # 1. Obtener departamento del equipo seleccionado
+            # Obtener departamento del equipo seleccionado
             eq_data = db.client.table('equipos').select('departamento_id').eq('id', equipo_id).single().execute()
             dept_id = eq_data.data.get('departamento_id') if eq_data.data else None
             
-            # 2. Crear tablero vinculado al equipo (SIN creado_por)
+            # Crear tablero vinculado al equipo (SIN creado_por)
             data = {
                 "titulo": titulo, 
                 "descripcion": descripcion, 
@@ -323,7 +323,7 @@ class TaskManager:
             }
             res = db.client.table('tableros').insert(data).execute()
             
-            # 3. Crear columnas por defecto
+            # Crear columnas por defecto
             if res.data:
                 tid = res.data[0]['id']
                 cols = [
@@ -360,8 +360,7 @@ class TaskManager:
         
     def eliminar_tablero(self, tablero_id):
         try:
-            # Primero borrar columnas y tareas (Cascada manual si no está en BD)
-            # Supabase suele tener ON DELETE CASCADE, probamos directo:
+            # Borrar columnas y tareas
             db.client.table('tableros').delete().eq('id', tablero_id).execute()
             return True
         except Exception as e:
@@ -391,7 +390,6 @@ class TaskManager:
             return False
 
     def eliminar_departamento(self, dept_id):
-        # OJO: Referencias cascada o restricción podrían fallar si hay usuarios o equipos
         try:
             if not db.client: return False
             db.client.table('departamentos').delete().eq('id', dept_id).execute()
@@ -404,8 +402,7 @@ class TaskManager:
     def obtener_equipos(self):
         try:
             if not db.client: return []
-            # Traer equipo junto con nombre de departamento (si Supabase join lo permite sencillo, 
-            # sino toca hacer 2 queries o join manual). Haremos select plano y luego cruzamos en UI.
+            # Traer equipo junto con nombre de departamento
             res = db.client.table('equipos').select('*').order('nombre').execute()
             return res.data if res.data else []
         except Exception as e:
@@ -416,7 +413,7 @@ class TaskManager:
         try:
             if not db.client: return False
             
-            # 1. Insertar equipo SIN lider/manager para romper dependencia circular
+            # Insertar equipo SIN lider/manager para romper dependencia circular
             data_equipo = {
                 'nombre': nombre,
                 'departamento_id': dept_id,
@@ -429,7 +426,7 @@ class TaskManager:
             if res.data:
                 nuevo_equipo_id = res.data[0]['id']
                 
-                # 2. Si hay líder asignado, actualizar su perfil
+                # Si hay líder asignado, actualizar su perfil
                 if lider_id:
                     # Lo ascendemos a 'lider_equipo' y le asignamos este equipo
                     self._mover_usuario_de_tabla(lider_id, 'lider_equipo', dept_id=dept_id, equipo_id=nuevo_equipo_id)
@@ -453,14 +450,14 @@ class TaskManager:
         try:
             if not db.client: return False
             
-            # 1. Asegurar roles correctos (Manager primero, luego Lider)
+            # Asegurar roles correctos (Manager primero, luego Lider)
             if manager_id:
                 self._mover_usuario_de_tabla(manager_id, 'manager', equipo_id=None, dept_id=dept_id)
                 
             if lider_id: 
                 self._mover_usuario_de_tabla(lider_id, 'lider_equipo', equipo_id=equipo_id, dept_id=dept_id)
 
-            # 2. Actualizar datos equipo
+            # Actualizar datos equipo
             data = {
                 'nombre': nombre,
                 'departamento_id': dept_id,
@@ -475,11 +472,10 @@ class TaskManager:
             return False
 
     def _mover_usuario_de_tabla(self, user_id, nuevo_rol, dept_id=None, equipo_id=None):
-        """
-        Mueve al usuario de su tabla actual a la tabla correspondiente al nuevo rol.
-        Simula una 'promocion' cambiando la tabla donde reside el registro.
-        USA CLIENTE ADMIN.
-        """
+        
+        # Mueve al usuario de su tabla actual a la tabla correspondiente al nuevo rol.
+        # Simula una 'promocion' cambiando la tabla donde reside el registro.
+        
         try:
             print(f"[DEBUG] Actualizando rol usuario {user_id} -> {nuevo_rol}")
             

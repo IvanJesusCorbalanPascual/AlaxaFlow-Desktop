@@ -224,7 +224,7 @@ class AdminWindow(QMainWindow):
         if self.usuario.nivel_acceso == 'manager':
             filtro = self.usuario.departamento_id
             
-        # 2. Pedir usuarios filtrados
+        # Pedir usuarios filtrados
         usuarios = self.task_manager.obtener_todos_usuarios(filtro_dept_id=filtro)
         # Recupera los nombres de departamentos para mostrarlos sin IDs
         dept_map = {}
@@ -336,7 +336,7 @@ class AdminWindow(QMainWindow):
             res = res.execute()
             combo_dept.clear()
 
-            if rol_actual != 'manager': #Solo si es si no es manager
+            if rol_actual != 'manager': # Solo si no es manager
                 combo_dept.addItem("Seleccionar departamento...", None)
 
             if res.data:
@@ -352,12 +352,11 @@ class AdminWindow(QMainWindow):
                 combo_dept.hide()
         except Exception: pass
 
-        # Logica cargar equipos (se podria filtrar por departamento mas adelante si se desea)
-        # Por simplicidad cargamos todos, podriamos implementar filtro dinamico en update_ui_state tambien
+        # Logica cargar equipos sin filtro
         combo_equipo = QComboBox()
         combo_equipo.addItem("Sin equipo (Opcional)", None)
 
-        # Logica cargar equipos 
+        # Logica cargar equipos
         equipos_data = [] # Lista temporal para filtrar
         try:
             res_eq = db.client.table('equipos').select('id, nombre, departamento_id').execute()
@@ -382,9 +381,6 @@ class AdminWindow(QMainWindow):
         def filtrar_equipos():
             dept_id = combo_dept.currentData()
             combo_equipo.clear()
-            # Siempre opción por defecto (especialmente util para roles que no requieren equipo o previo a seleccionar)
-            # Pero logica de negocio dice Lider/Trabajador requires equipo. 
-            # Dejamos "Seleccionar equipo..." como placeholder.
             combo_equipo.addItem("Seleccionar equipo...", None)
             
             if not dept_id:
@@ -471,13 +467,11 @@ class AdminWindow(QMainWindow):
                         
                         if reply == QMessageBox.Yes:
                             # Democion del lider actual
-                            # REFACTOR: Usar metodo manager para mover de tabla
                             if hasattr(self, 'task_manager'):
                                 self.task_manager._mover_usuario_de_tabla(lider_actual_id, 'trabajador')
                             else:
                                 # Fallback si no tenemos referencia (rara vez)
                                 print("Error: No task_manager ref")
-                            # (Opcional) Le quitamos el equipo? No, lo dejamos como miembro normal (trabajador) del mismo equipo.
                         else:
                             # Cancelar operacion
                             return 
@@ -521,21 +515,19 @@ class AdminWindow(QMainWindow):
         if row < 0: return
         id_user = self.table_users.item(row, 0).text()
         email_user = self.table_users.item(row, 3).text()
-        
-        # Check if user is a leader of any team
+        # Comprobar si el usuario es lider de algun equipo
         es_lider = False
         nombre_equipo_liderado = ""
-        equipos_donde_es_lider = [] # Store IDs to unlink later
+        equipos_donde_es_lider = []
         
         try:
             equipos = self.task_manager.obtener_equipos()
             for eq in equipos:
-                # Compare as strings to be safe
+                # Comparar como strings para estar seguros
                 if str(eq.get('lider_id')) == str(id_user):
                     es_lider = True
                     nombre_equipo_liderado = eq.get('nombre', 'un equipo')
                     equipos_donde_es_lider.append(eq['id'])
-                    # We don't break, so we catch all teams if multiple
         except Exception as e:
             print(f"Error checking leadership: {e}")
 
@@ -551,11 +543,10 @@ class AdminWindow(QMainWindow):
         reply = QMessageBox.question(self, "Confirmar Eliminación", msg, QMessageBox.Yes | QMessageBox.No)
         
         if reply == QMessageBox.Yes:
-            # Fix FK Constraint: Unlink leader from teams explicitly
             if es_lider and equipos_donde_es_lider:
                 try:
                     for eq_id in equipos_donde_es_lider:
-                        # Set lider_id to NULL
+                        # Lider a None
                         db.client.table('equipos').update({'lider_id': None}).eq('id', eq_id).execute()
                 except Exception as e:
                     print(f"Error unlinking leader: {e}")
@@ -564,7 +555,6 @@ class AdminWindow(QMainWindow):
 
             if self.task_manager.eliminar_usuario(id_user):
                 self.cargar_usuarios()
-                # Also refresh teams table if exists, as it might update "Lider" column to "Sin Líder"
                 if hasattr(self, 'cargar_equipos'):
                     self.cargar_equipos()
                 QMessageBox.information(self, "Eliminado", "Usuario eliminado correctamente.")
@@ -737,14 +727,14 @@ class AdminWindow(QMainWindow):
         elif self.usuario and hasattr(self.usuario, 'nivel_acceso'):
             rol_actual = self.usuario.nivel_acceso
 
-        # 1. Pestaña DEPARTAMENTOS (Solo Admin)
+        # Pestaña DEPARTAMENTOS (Solo Admin)
         if rol_actual == 'admin':
             self.tab_dept = QWidget()
             self.tab_dept.setObjectName("tab_dept")
             self.tabWidget.addTab(self.tab_dept, "🏢 Gestión Departamentos")
             self.construir_tab_departamentos()
         
-        # 2. Pestaña EQUIPOS (Admin, Manager, Lider)
+        # Pestaña EQUIPOS (Admin, Manager, Lider)
         if rol_actual in ['admin', 'manager', 'lider_equipo']:
             self.tab_equipos = QWidget()
             self.tab_equipos.setObjectName("tab_equipos")
@@ -1040,8 +1030,7 @@ class AdminWindow(QMainWindow):
             user_id = combo.currentData()
             if not user_id: return
             
-            # Verificar si es lider de algun equipo
-            # Necesitamos consultar equipos. Ojo, un usuario podria ser lider de varios (teoricamente)
+            # Verificar si es lider de algun equipo, un usuario podria ser lider de varios
             # Simplificamos asumiendo 1.
             equipos = self.task_manager.obtener_equipos() # Seria mejor query filtrada pero vale
             equipos_liderados = [eq for eq in equipos if str(eq.get('lider_id')) == str(user_id)]
@@ -1080,7 +1069,7 @@ class AdminWindow(QMainWindow):
         count = 0
         for u in users:
             # No puede ser el que estamos promoviendo (old_lider_id)
-            # Debe ser trabajador del depto
+            # Debe ser un trabajador del departanento
             if str(u.get('id')) != str(old_lider_id) and \
                str(u.get('departamento_id')) == str(dept_id) and \
                u['nivel_acceso'] == 'trabajador':
@@ -1098,11 +1087,7 @@ class AdminWindow(QMainWindow):
         if sd.exec_():
             new_lider_id = s_combo.currentData()
             if new_lider_id:
-                # Update equipo with new lider
-                # Update new lider profile to 'lider_equipo' (auto handled by editar_equipologic?)
-                # No, llamamos a editar_equipo o update directo. 
-                # El task_manager.editar_equipo hace auto-promote.
-                # Pero necesitamos mantener el resto de datos del equipo.
+                # Update equipo con nuevo lider
                 try:
                     self.task_manager.editar_equipo(
                         equipo['id'], 
@@ -1115,9 +1100,7 @@ class AdminWindow(QMainWindow):
                 except Exception as e:
                     print(f"Error asignando sustituto: {e}")
             else:
-                # Si no selecciona nadie, el equipo se queda sin lider?
-                # O mantenemos el anterior (que ahora es manager)? 
-                # El requisito dice "se quedara vacio". Asi que update lider_id = None
+                # Si no selecciona nadie, el equipo se queda sin lider
                  try:
                     db.client.table('equipos').update({'lider_id': None}).eq('id', equipo['id']).execute()
                  except: pass
@@ -1207,12 +1190,9 @@ class AdminWindow(QMainWindow):
              
              for u in users:
                  # Filtro: debe ser 'trabajador' y pertenecer al departamento
-                 # (Opcional: permitir tambien a quien ya sea lider_equipo pero no tenga equipo? 
-                 #  Por ahora estricto: trabajador del dpto)
                  u_dept = u.get('departamento_id')
                  u_rol = u.get('nivel_acceso')
                  
-                 # NOTA: u_dept puede ser string o int, asegurar comparacion
                  if str(u_dept) == str(dept_id) and u_rol == 'trabajador':
                       combo_l.addItem(f"{u['email']}", u['id'])
 
@@ -1313,7 +1293,7 @@ class AdminWindow(QMainWindow):
         current_lider_id = eq_data.get('lider_id')
         current_manager_id = eq_data.get('manager_id')
 
-        # Rol actual admin?
+        # Rol actual
         rol_actual = 'trabajador'
         if self.parent_window and hasattr(self.parent_window, 'rol'):
             rol_actual = self.parent_window.rol
@@ -1333,10 +1313,6 @@ class AdminWindow(QMainWindow):
              combo_m.setCurrentIndex(idx_m)
         
         def actualizar_lideres_edit():
-             # Guardar seleccion actual si es posible preservarla? 
-             # Es dificil pq la lista cambia. Solo preseleccionamos si coincide con el lider actual del equipo (si no ha cambiado dept)
-             # O si estamos editando, el lider actual DEBE salir aunque ya no cumpla las condiciones?
-             # Vamos a permitir que salga el lider actual + trabajadores del dpto seleccionado.
              selected_dept = combo_d.currentData()
              
              combo_l.clear()
@@ -1386,7 +1362,6 @@ class AdminWindow(QMainWindow):
                    reply = QMessageBox.question(self, "Líder anterior", msg, QMessageBox.Yes | QMessageBox.No)
                    if reply == QMessageBox.Yes:
                        try:
-                           # REFACTOR: Usar TaskManager
                            if hasattr(self, 'task_manager'):
                                self.task_manager._mover_usuario_de_tabla(current_lider_id, 'trabajador')
                        except Exception as e:

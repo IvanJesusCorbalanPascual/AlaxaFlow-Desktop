@@ -139,7 +139,7 @@ class LoginDialog(QDialog): # Hereda de QDialog
             # Guarda el usuario y rol para pasarlo al main
             self.usuario_actual = user 
             self.rol_usuario = rol
-            # VERIFICACION FINAL: accept() cierra la ventana y devuelve True (Accepted)
+            # accept() cierra la ventana y devuelve True (Accepted)
             self.accept() 
         else:
             QMessageBox.critical(self, "Error", "Credenciales incorrectas")

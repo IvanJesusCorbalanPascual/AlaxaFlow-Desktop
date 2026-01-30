@@ -135,7 +135,7 @@ class MainWindow(QMainWindow):
             self.inicializar_datos()
 
     def configurar_ui(self):
-        # 1. Configuración básica (Logout y Título)
+        # Configuración básica (Logout y Título)
         self.btn_logout.clicked.connect(self.cerrar_sesion)
         self.HeaderTitle.setText(f"AlaxaFlow - {self.rol.upper()}")
 
@@ -156,7 +156,7 @@ class MainWindow(QMainWindow):
         self.btn_add_column.setObjectName("btn_add_column")
         self.btn_add_column.setStyleSheet("QPushButton#btn_add_column { background-color: transparent; color: #FFFFFF; border: 1px solid #D7CCC8; padding: 6px; border-radius: 4px; }")
         
-        # LOGICA NUEVA: Solo permitimos añadir columna si NO es trabajador
+        # Solo permitimos añadir columna si no es trabajador
         if self.rol != 'trabajador':
             self.btn_add_column.clicked.connect(self.agregar_columna)
             # Lo colocamos junto al botón de accesibilidad (index 6)
@@ -342,7 +342,7 @@ class MainWindow(QMainWindow):
             nombre_str = mapa_usuarios.get(uuid_asignado) if uuid_asignado else None
 
             # Crea la tarjeta
-            card = KanbanCard(t['id'], t['titulo'], self.rol, self.task_manager, nombre_asignado=nombre_str, equipo_id=equipo_id)
+            card = KanbanCard(t['id'], t['titulo'], self.rol, self.task_manager, nombre_asignado=nombre_str, equipo_id=equipo_id, parent=self)
 
             # Si el modo actual es contraste, aplica el estilo a la tarjeta recién creada.
             if hasattr(self, 'tema_actual') and self.tema_actual == 'contraste':

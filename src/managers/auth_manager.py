@@ -1,27 +1,27 @@
 import json
 import os
-from types import SimpleNamespace # <--- Herramienta estándar de Python
+from types import SimpleNamespace # Herramienta estándar de Python
 from src.bd.conexion import db
 
 SESSION_FILE = "session.json"
 
 class AuthManager:
     
-    # --- MÉTODO CLAVE: Convierte el usuario 'rígido' en uno 'flexible' ---
+    # Convierte el usuario 'rígido' en uno 'flexible'
     def _convertir_usuario(self, sb_user):
         try:
-            # 1. Creamos un objeto vacío estándar de Python
+            # Objeto vacío estándar de Python
             user_flexible = SimpleNamespace()
             
-            # 2. Copiamos los datos obligatorios de Supabase
+            # Copiamos los datos obligatorios de Supabase
             user_flexible.id = sb_user.id
             user_flexible.email = sb_user.email
             
-            # 3. Buscamos y pegamos los datos extra de la base de datos
+            # Buscamos y pegamos los datos extra de la base de datos
             res = db.client.table('perfiles').select('*').eq('id', sb_user.id).single().execute()
             
             if res.data:
-                # Pegamos las etiquetas nuevas. Ahora SI dejará hacerlo.
+                # Pegamos las etiquetas nuevas
                 user_flexible.nivel_acceso = res.data.get('nivel_acceso', 'trabajador')
                 user_flexible.departamento_id = res.data.get('departamento_id')
                 user_flexible.equipo_id = res.data.get('equipo_id')

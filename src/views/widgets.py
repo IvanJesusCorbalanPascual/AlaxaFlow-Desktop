@@ -281,7 +281,7 @@ class TareaDialog(QDialog):
         btn_layout = QHBoxLayout()
         
         # Botón borrar (Solo si tienes permisos)
-        if rol_usuario in ['admin', 'manager']:
+        if rol_usuario in ['admin', 'manager', 'lider_equipo']:
             self.btn_borrar = QPushButton("🗑️ Eliminar Tarea")
             
             # ID para CSS
@@ -362,8 +362,8 @@ class KanbanCard(QFrame):
     request_delete = pyqtSignal(str) # Señal para pedir borrar la tarea
     request_refresh = pyqtSignal() # Señal para pedir guardar cambios
 
-    def __init__(self, id_tarea, text, rol_usuario, manager, nombre_asignado=None, equipo_id=None): 
-        super().__init__()
+    def __init__(self, id_tarea, text, rol_usuario, manager, nombre_asignado=None, equipo_id=None, parent=None): 
+        super().__init__(parent)
         self.id_tarea = id_tarea 
         self.rol_usuario = rol_usuario 
         self.manager = manager
@@ -488,7 +488,7 @@ class KanbanCard(QFrame):
 
     # Menú Contextual (Clic Derecho)
     def contextMenuEvent(self, event):
-        if self.rol_usuario in ['admin', 'manager']:
+        if self.rol_usuario in ['admin', 'manager', 'lider_equipo']:
             menu = QMenu(self)
             action_delete = QAction("🗑️ Eliminar Tarea", self)
             action_delete.triggered.connect(lambda: self.request_delete.emit(str(self.id_tarea)))
@@ -504,8 +504,8 @@ class KanbanCard(QFrame):
 
 # --- COLUMNA ---
 class KanbanColumn(QFrame):
-    def __init__(self, id_columna, titulo, task_manager_instance, parent_window):
-        super().__init__()
+    def __init__(self, id_columna, titulo, task_manager_instance, parent_window, parent=None):
+        super().__init__(parent_window)
         self.id_columna = id_columna 
         self.manager = task_manager_instance
         self.main_window = parent_window 
