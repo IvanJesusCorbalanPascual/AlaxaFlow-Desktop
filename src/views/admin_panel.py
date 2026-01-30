@@ -984,9 +984,23 @@ class AdminWindow(QMainWindow):
                 list_managers.addItem("No hay managers asignados")
             else:
                 for m in managers_dept:
-                    list_managers.addItem(f"{m['email']} ({m.get('nombre', '')} {m.get('apellidos', '')})")
+                    # it = QListWidget(f"{m['email']} ({m.get('nombre', '')} {m.get('apellidos', '')})") 
+                    # El original tenia error de typo en QListWidget vs QListWidgetItem.
+                    from PyQt5.QtWidgets import QListWidgetItem
+                    item_obj = QListWidgetItem(f"{m['email']} ({m.get('nombre', '')} {m.get('apellidos', '')})")
+                    item_obj.setData(Qt.UserRole, m['id'])
+                    list_managers.addItem(item_obj)
         
         refresh_managers_list()
+        
+        # Guardamos la referencia para el callback
+        self.refresh_managers_callback = refresh_managers_list
+        
+        # Activar menu contextual
+        list_managers.setContextMenuPolicy(Qt.CustomContextMenu)
+        list_managers.customContextMenuRequested.connect(self.menu_contextual_manager)
+        self.list_managers = list_managers # Guardar ref para el metodo menu
+        
         layout.addWidget(list_managers)
         
         # Boton Promover Manager
@@ -1048,7 +1062,8 @@ class AdminWindow(QMainWindow):
             
             for eq in equipos_liderados:
                 msg = f"El usuario es actualmente líder del equipo '{eq['nombre']}'.\nEl puesto quedará vacante.\n¿Deseas seleccionar un sustituto ahora?"
-                reply = QMessageBox.question(d, "Vacante de Líder", msg, QMessageBox.Yes | QMessageBox.No)
+                # CHANGE: Usamos WARNING como pedido
+                reply = QMessageBox.warning(d, "Vacante de Líder", msg, QMessageBox.Yes | QMessageBox.No)
                 
                 if reply == QMessageBox.Yes:
                     # Dialogo anidado para sustituto
@@ -1430,9 +1445,124 @@ class AdminWindow(QMainWindow):
                 else:
                     self.table_boards.setRowHidden(fila, True)
 
+    def _alert_leader_conflict(self, old_lider_id):
+        # Muestra alerta
+        
+        msg = "Estás a punto de cambiar al líder del equipo.\n\nEl nuevo trabajador seleccionado pasará a ser LÍDER.\nEl antiguo líder pasará a ser TRABAJADOR.\n\n¿Deseas continuar?"
+        reply = QMessageBox.warning(self, "Cambio de Líder", msg, QMessageBox.Ok | QMessageBox.Cancel)
+        
+        if reply == QMessageBox.Ok:
+            try:
+                # Democionar al antiguo lider
+                if hasattr(self, 'task_manager'):
+                    self.task_manager._mover_usuario_de_tabla(old_lider_id, 'trabajador')
+                return True
+            except Exception as e:
+                print(f"Error democionando lider anterior: {e}")
+                return False
+        else:
+            return False
+
+    # MENU PARA DESCENDER A LIDER DE EQUIPO
+    def menu_contextual_manager(self, pos):
+        # Menu click derecho en la lista de managers
+        item = self.list_managers.itemAt(pos)
+        if not item: return
+        user_id = item.data(Qt.UserRole)
+        if not user_id: return 
+        
+        menu = QMenu()
+        
+        # Descender a Lider de Equipo
+        act_lider = QAction("Descender a Líder de Equipo", self)
+        act_lider.triggered.connect(lambda: self.procesar_downgrade_manager(user_id, 'lider_equipo'))
+        
+        # Descender a Trabajador
+        act_trabajador = QAction("Descender a Trabajador", self)
+        act_trabajador.triggered.connect(lambda: self.procesar_downgrade_manager(user_id, 'trabajador'))
+        
+        menu.addAction(act_lider)
+        menu.addAction(act_trabajador)
+        
+        menu.exec_(self.list_managers.mapToGlobal(pos))
+        
+    def procesar_downgrade_manager(self, user_id, target_rol):
+        # Obtenemos info del usuario
+        try:
+            res = db.client.table('perfiles').select('departamento_id, email').eq('id', user_id).single().execute()
+            user_data = res.data
+            dept_id = user_data['departamento_id']
+        except: return 
+        
+        if not dept_id:
+             QMessageBox.warning(self, "Error", "El usuario no tiene departamento asignado.")
+             return
+
+        # Buscamos equipos del departamento
+        equipos = self.task_manager.obtener_equipos()
+        equipos_dept = [e for e in equipos if str(e.get('departamento_id')) == str(dept_id)]
+        
+        if not equipos_dept:
+             QMessageBox.warning(self, "Aviso", "No hay equipos en este departamento para asignar.")
+             return
+             
+        # Dialogo seleccion equipo
+        d = QDialog(self)
+        d.setWindowTitle(f"Asignar Equipo ({target_rol})")
+        self.aplicar_estilo(d)
+        l = QVBoxLayout(d)
+        l.addWidget(QLabel("Selecciona el equipo de destino:"))
+        
+        combo = QComboBox()
+        for e in equipos_dept:
+            combo.addItem(e['nombre'], e['id'])
+        l.addWidget(combo)
+        
+        btn = QPushButton("Confirmar Asignación")
+        btn.clicked.connect(d.accept)
+        l.addWidget(btn)
+        
+        if d.exec_():
+            equipo_dest_id = combo.currentData()
+            if not equipo_dest_id: return
+            
+            # Solo si el destino es ser LIDER
+            if target_rol == 'lider_equipo':
+                # Chequear si ese equipo ya tiene lider
+                try:
+                    eq_data = db.client.table('equipos').select('lider_id').eq('id', equipo_dest_id).single().execute()
+                    if eq_data.data and eq_data.data.get('lider_id'):
+                         current_lider = eq_data.data['lider_id']
+                         # LLAMADA AL HELPER
+                         if not self._alert_leader_conflict(current_lider):
+                             return # Abortado por usuario
+                except Exception as e:
+                    print(f"Error check lider: {e}")
+            
+            # Usamos _mover_usuario_de_tabla para cambiar rol a 'trabajador' o 'lider_equipo'
+            
+            if self.task_manager._mover_usuario_de_tabla(user_id, target_rol):
+                 # Update equipo_id
+                 try:
+                     db.client.table('perfiles').update({'equipo_id': equipo_dest_id}).eq('id', user_id).execute()
+                     if target_rol == 'lider_equipo':
+                         # Update tabla equipos set lider_id
+                         db.client.table('equipos').update({'lider_id': user_id}).eq('id', equipo_dest_id).execute()
+                     
+                     QMessageBox.information(self, "Exito", f"Usuario descendido a {target_rol} correctamente.")
+
+                     if hasattr(self, 'refresh_managers_callback') and self.refresh_managers_callback:
+                         self.refresh_managers_callback()
+                         
+                 except Exception as ex:
+                     QMessageBox.critical(self, "Error", f"Fallo asignando equipo: {ex}")
+            else:
+                 QMessageBox.critical(self, "Error", "Fallo al cambiar rol.")
+
     def ir_al_tablero_seleccionado(self):
         # Detecta qué fila está seleccionada y manda al Main Window a cargar ese tablero
         fila_actual = self.table_boards.currentRow()
+
         
         # Manejo de errores básico
         if fila_actual < 0:
