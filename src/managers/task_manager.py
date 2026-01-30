@@ -224,12 +224,15 @@ class TaskManager:
 
     # --- Gestion de usuarios y tableros por Admin ---
 
-    def obtener_todos_usuarios(self, filtro_dept_id=None):
+    def obtener_todos_usuarios(self, filtro_dept_id=None, filtro_equipo_id=None):
         try:
             query = db.client.table('perfiles').select('*')
             
             if filtro_dept_id:
                 query = query.eq('departamento_id', filtro_dept_id)
+            
+            if filtro_equipo_id:
+                query = query.eq('equipo_id', filtro_equipo_id)
                 
             return query.order('nombre').execute().data
         except Exception as e:

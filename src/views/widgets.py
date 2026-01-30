@@ -63,10 +63,11 @@ Clase para el diálogo de edición de tareas, contiene la logica para editar y b
 """
 # --- 1. CLASE DIÁLOGO PARA EDITAR/BORRAR ---
 class TareaDialog(QDialog):
-    def __init__(self, tarea_id, titulo_actual, rol_usuario, manager_instance, parent=None):
+    def __init__(self, tarea_id, titulo_actual, rol_usuario, manager_instance, parent=None, equipo_id=None):
         super().__init__(parent)
         self.tarea_id = tarea_id
         self.manager = manager_instance
+        self.equipo_id = equipo_id
         self.accion_realizada = None
         self.nuevo_titulo = titulo_actual
     
@@ -305,7 +306,7 @@ class TareaDialog(QDialog):
     # Carga los usuarios para el comboBox
     def cargar_usuarios_combo(self): 
         try:
-            usuarios = self.manager.obtener_todos_usuarios()
+            usuarios = self.manager.obtener_todos_usuarios(filtro_equipo_id=self.equipo_id)
             for u in usuarios:
                 texto = f"{u.get('nombre', 'Usuario')} ({u.get('email')})"
                 uid = u.get('id')
@@ -361,11 +362,12 @@ class KanbanCard(QFrame):
     request_delete = pyqtSignal(str) # Señal para pedir borrar la tarea
     request_refresh = pyqtSignal() # Señal para pedir guardar cambios
 
-    def __init__(self, id_tarea, text, rol_usuario, manager, nombre_asignado=None): 
+    def __init__(self, id_tarea, text, rol_usuario, manager, nombre_asignado=None, equipo_id=None): 
         super().__init__()
         self.id_tarea = id_tarea 
         self.rol_usuario = rol_usuario 
         self.manager = manager
+        self.equipo_id = equipo_id
         self.texto_actual = text # Guardamos el texto original
 
         self.setProperty("class", "tarjeta")
@@ -435,7 +437,7 @@ class KanbanCard(QFrame):
 
     # Lógica para abrir el diálogo al hacer clic
     def abrir_detalle(self):
-        dialogo = TareaDialog(self.id_tarea, self.text(), self.rol_usuario, self.manager, self)
+        dialogo = TareaDialog(self.id_tarea, self.text(), self.rol_usuario, self.manager, self, equipo_id=self.equipo_id)
         
         if dialogo.exec_() == QDialog.Accepted:
             if dialogo.accion_realizada == "borrar":

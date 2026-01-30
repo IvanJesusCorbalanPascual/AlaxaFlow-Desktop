@@ -325,7 +325,8 @@ class MainWindow(QMainWindow):
         tareas = self.task_manager.obtener_tareas_por_tablero(self.tablero_actual['id'])
 
         # Carga el mapa de usuarios para asignaciones
-        usuarios_lista = self.task_manager.obtener_todos_usuarios()
+        equipo_id = self.tablero_actual.get('equipo_id')
+        usuarios_lista = self.task_manager.obtener_todos_usuarios(filtro_equipo_id=equipo_id)
         mapa_usuarios = {}
         if usuarios_lista:
             for u in usuarios_lista:
@@ -341,7 +342,7 @@ class MainWindow(QMainWindow):
             nombre_str = mapa_usuarios.get(uuid_asignado) if uuid_asignado else None
 
             # Crea la tarjeta
-            card = KanbanCard(t['id'], t['titulo'], self.rol, self.task_manager, nombre_asignado=nombre_str)
+            card = KanbanCard(t['id'], t['titulo'], self.rol, self.task_manager, nombre_asignado=nombre_str, equipo_id=equipo_id)
 
             # Si el modo actual es contraste, aplica el estilo a la tarjeta recién creada.
             if hasattr(self, 'tema_actual') and self.tema_actual == 'contraste':
