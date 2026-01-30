@@ -53,6 +53,21 @@ QPushButton#btn_accesibilidad { background-color: #FFB74D; color: #3E2723; font-
 
 QPushButton#btn_add_card { background-color: transparent; border: none; color: #5D4037; text-align: left; padding: 8px; }
 QPushButton#btn_add_card:hover { background-color: #D7CCC8; color: #3E2723; }
+
+QMenu {
+    background-color: #FFFFFF; 
+    border: 1px solid #D7CCC8; 
+    padding: 5px;
+}
+QMenu::item {
+    padding: 6px 20px;
+    color: #3E2723; 
+    background-color: transparent;
+}
+QMenu::item:selected {
+    background-color: #FFB74D; 
+    color: #3E2723;
+}
 """
 
 ESTILO_CONTRASTE = """
@@ -104,6 +119,25 @@ QScrollBar:horizontal { height: 0px; background: transparent; }
 QScrollBar:vertical { border: 1px solid #FFFF00; background: #000000; width: 12px; margin: 0px; }
 QScrollBar::handle:vertical { background: #FFFF00; min-height: 20px; }
 QScrollBar::add-line:vertical, QScrollBar::sub-line:vertical { background: none; height: 0px; }
+
+QMenu {
+    background-color: #000000;
+    border: 2px solid #FFFF00;
+}
+QMenu::item {
+    padding: 6px 20px;
+    color: #FFFF00;
+    background-color: transparent;
+}
+QMenu::item:selected {
+    background-color: #FFFF00;
+    color: #000000;
+}
+
+QPushButton#btn_add_column {
+        padding: 8px 15px;  
+        min-height: 20px;  
+    }
 """
 
 """
@@ -137,7 +171,27 @@ class MainWindow(QMainWindow):
     def configurar_ui(self):
         # Configuración básica (Logout y Título)
         self.btn_logout.clicked.connect(self.cerrar_sesion)
-        self.HeaderTitle.setText(f"AlaxaFlow - {self.rol.upper()}")
+        self.btn_logout.clicked.connect(self.cerrar_sesion)
+        
+        # Ocultamos la etiqueta "Tablero Actual:" para limpiar la interfaz
+        if hasattr(self, 'label'):
+             self.label.hide()
+        
+        # Ocultamos el spacer izquierdo para centrar mejor el título del tablero
+        if hasattr(self, 'horizontalSpacer_2'):
+             # self.horizontalSpacer_2.changeSize(0,0, QSizePolicy.Fixed, QSizePolicy.Fixed)
+             # En un layout, a veces es mejor simplemente ignorarlo o dejarlo.
+             # Si es un QSpacer, no tiene método hide(). 
+             # Simplemente no hacemos nada o lo removemos del layout si fuera necesario.
+             # Al ser un spacer en .ui, lo dejamos.
+             pass
+
+        # Configura el texto de la izquierda: Nombre Apellido (Rol)
+        nombre_completo = f"{self.usuario.nombre} {self.usuario.apellidos}".strip()
+        if not nombre_completo:
+            nombre_completo = self.usuario.email.split('@')[0]
+            
+        self.HeaderTitle.setText(f"{nombre_completo} ({self.rol.upper()})")
 
         # Botón para activar el modo alto contraste
         self.btn_accesibilidad = QPushButton("👁️ Alto Contraste")
@@ -154,7 +208,7 @@ class MainWindow(QMainWindow):
         self.btn_add_column = QPushButton("➕ Añadir Columna")
         self.btn_add_column.setCursor(Qt.PointingHandCursor)
         self.btn_add_column.setObjectName("btn_add_column")
-        self.btn_add_column.setStyleSheet("QPushButton#btn_add_column { background-color: transparent; color: #FFFFFF; border: 1px solid #D7CCC8; padding: 6px; border-radius: 4px; }")
+        self.btn_add_column.setStyleSheet("QPushButton#btn_add_column { background-color: transparent; color: #FFB74D; font-weight: bold; border: 2px solid #FFB74D; padding: 6px; border-radius: 4px; }")
         
         # Solo permitimos añadir columna si no es trabajador
         if self.rol != 'trabajador':
@@ -244,7 +298,7 @@ class MainWindow(QMainWindow):
             self.tema_actual = "normal"
             self.btn_accesibilidad.setText("👁️ Alto Contraste")
 
-            self.btn_add_column.setStyleSheet("QPushButton#btn_add_column { background-color: transparent; color: #FFFFFF; border: 1px solid #D7CCC8; padding: 6px; border-radius: 4px; }")
+            self.btn_add_column.setStyleSheet("QPushButton#btn_add_column { background-color: transparent; color: #FFB74D; font-weight: bold; border: 2px solid #FFB74D; padding: 6px; border-radius: 4px; }")
             
         # Actualiza el estilo de las tarjetas, recorriendo las columnas y layouts
         if hasattr(self, 'cols_widgets'):
@@ -264,13 +318,16 @@ class MainWindow(QMainWindow):
         self.tablero_actual = self.task_manager.obtener_o_crear_tablero_inicial(self.usuario.id)
         
         if self.tablero_actual:
-            titulo = self.tablero_actual.get('titulo', 'Tablero')
-            self.HeaderTitle.setText(f"{titulo} ({self.rol.upper()})")
+
+            # titulo = self.tablero_actual.get('titulo', 'Tablero')
+            # YA NO ACTUALIZAMOS HeaderTitle con el título del tablero
+            # self.HeaderTitle.setText(f"{titulo} ({self.rol.upper()})")
             self.recargar_tablero_completo()
         else:
             # Si es Admin o Manager, no mostramos error, es normal no tener tablero personal
             if self.rol in ['admin', 'manager']:
-                 self.HeaderTitle.setText(f"Vista {self.rol.capitalize()} (Sin Tablero)")
+                 # self.HeaderTitle.setText(f"Vista {self.rol.capitalize()} (Sin Tablero)")
+                 pass
             else:
                 QMessageBox.critical(self, "Error", "No se pudo cargar ningún tablero.")
 
@@ -460,7 +517,7 @@ class MainWindow(QMainWindow):
             'id': id_tablero,
             'titulo': titulo_tablero
         }
-        self.HeaderTitle.setText(f"{titulo_tablero} (VISTA ADMIN)")
+        # self.HeaderTitle.setText(f"{titulo_tablero} (VISTA ADMIN)")
         
         # Forzamos la recarga de columnas y tareas de ESE tablero
         self.recargar_tablero_completo()

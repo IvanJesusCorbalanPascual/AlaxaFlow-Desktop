@@ -14,6 +14,21 @@ ESTILO_CARD_NORMAL = """
     }
     QFrame[class="tarjeta"] QLabel { background: transparent; }
     QFrame[class="tarjeta"]:hover { background-color: #FFF8E1; border: 1px solid #FFB74D; }
+
+    QMenu {
+        background-color: #FFFFFF; 
+        border: 1px solid #D7CCC8;
+        font-weight: bold;
+    }
+    QMenu::item {
+        padding: 6px 20px;
+        color: #3E2723;
+        background-color: transparent;
+    }
+    QMenu::item:selected {
+        background-color: #FFB74D;
+        color: #3E2723;
+    }
 """
 
 ESTILO_CARD_CONTRASTE = """
@@ -423,9 +438,12 @@ class KanbanCard(QFrame):
             self.setStyleSheet(ESTILO_CARD_CONTRASTE)
             # Quita la sombra para que sea más legible
             self.setGraphicsEffect(None)
+            self.lbl_asignado.setStyleSheet("color: #FFFF00; font-size: 12px; margin-top: 4px; font-weight: bold;")
         else:
             # Restaura la sombra
             self.setStyleSheet(ESTILO_CARD_NORMAL)
+
+            self.lbl_asignado.setStyleSheet("color: #795548; font-size: 11px; margin-top: 4px; font-weight: bold;")
 
             # Restaura la sombra
             shadow = QGraphicsDropShadowEffect()

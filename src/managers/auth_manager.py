@@ -26,12 +26,14 @@ class AuthManager:
                 user_flexible.departamento_id = res.data.get('departamento_id')
                 user_flexible.equipo_id = res.data.get('equipo_id')
                 user_flexible.nombre = res.data.get('nombre', '')
+                user_flexible.apellidos = res.data.get('apellidos', '')
             else:
                 # Valores por defecto si no hay perfil
                 user_flexible.nivel_acceso = 'trabajador'
                 user_flexible.departamento_id = None
                 user_flexible.equipo_id = None
                 user_flexible.nombre = ''
+                user_flexible.apellidos = ''
                 
             return user_flexible
             
