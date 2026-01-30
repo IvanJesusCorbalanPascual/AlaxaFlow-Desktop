@@ -1045,13 +1045,12 @@ class AdminWindow(QMainWindow):
             if not user_id: return
             
             # Verificar si es lider de algun equipo, un usuario podria ser lider de varios
-            # Simplificamos asumiendo 1.
-            equipos = self.task_manager.obtener_equipos() # Seria mejor query filtrada pero vale
+            equipos = self.task_manager.obtener_equipos() 
             equipos_liderados = [eq for eq in equipos if str(eq.get('lider_id')) == str(user_id)]
             
             for eq in equipos_liderados:
                 msg = f"El usuario es actualmente líder del equipo '{eq['nombre']}'.\nEl puesto quedará vacante.\n¿Deseas seleccionar un sustituto ahora?"
-                # CHANGE: Usamos WARNING como pedido
+                # Usamos warning para opciones Yes/No
                 reply = QMessageBox.warning(d, "Vacante de Líder", msg, QMessageBox.Yes | QMessageBox.No)
                 
                 if reply == QMessageBox.Yes:
