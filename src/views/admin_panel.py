@@ -1382,15 +1382,21 @@ class AdminWindow(QMainWindow):
             # Conflicto Lider en Edicion
             # Si cambiamos de lider y habia uno anterior
             if new_lider_id and current_lider_id and new_lider_id != current_lider_id:
-                   msg = "Has cambiado el líder del equipo.\n¿Deseas cambiar el rol del líder ANTERIOR a 'trabajador'?"
-                   reply = QMessageBox.question(self, "Líder anterior", msg, QMessageBox.Yes | QMessageBox.No)
-                   if reply == QMessageBox.Yes:
+                   msg = "Estás a punto de cambiar al líder del equipo.\n\nEl nuevo trabajador seleccionado pasará a ser LÍDER.\nEl antiguo líder pasará a ser TRABAJADOR.\n\n¿Deseas continuar?"
+                   
+                   # Usamos Warning como icono, y botones OK / Cancel
+                   reply = QMessageBox.warning(self, "Cambio de Líder", msg, QMessageBox.Ok | QMessageBox.Cancel)
+                   
+                   if reply == QMessageBox.Ok:
                        try:
                            # REFACTOR: Usar TaskManager
                            if hasattr(self, 'task_manager'):
                                self.task_manager._mover_usuario_de_tabla(current_lider_id, 'trabajador')
                        except Exception as e:
                            print(f"Error al democionar lider anterior: {e}")
+                   else:
+                       # Si le da a Cancelar (o cierra), abortamos TODO.
+                       return
             
             # Determinar manager_id final
             m_id_final = current_manager_id

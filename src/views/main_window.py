@@ -137,7 +137,27 @@ class MainWindow(QMainWindow):
     def configurar_ui(self):
         # 1. Configuración básica (Logout y Título)
         self.btn_logout.clicked.connect(self.cerrar_sesion)
-        self.HeaderTitle.setText(f"AlaxaFlow - {self.rol.upper()}")
+        self.btn_logout.clicked.connect(self.cerrar_sesion)
+        
+        # Ocultamos la etiqueta "Tablero Actual:" para limpiar la interfaz
+        if hasattr(self, 'label'):
+             self.label.hide()
+        
+        # Ocultamos el spacer izquierdo para centrar mejor el título del tablero
+        if hasattr(self, 'horizontalSpacer_2'):
+             # self.horizontalSpacer_2.changeSize(0,0, QSizePolicy.Fixed, QSizePolicy.Fixed)
+             # En un layout, a veces es mejor simplemente ignorarlo o dejarlo.
+             # Si es un QSpacer, no tiene método hide(). 
+             # Simplemente no hacemos nada o lo removemos del layout si fuera necesario.
+             # Al ser un spacer en .ui, lo dejamos.
+             pass
+
+        # Configura el texto de la izquierda: Nombre Apellido (Rol)
+        nombre_completo = f"{self.usuario.nombre} {self.usuario.apellidos}".strip()
+        if not nombre_completo:
+            nombre_completo = self.usuario.email.split('@')[0]
+            
+        self.HeaderTitle.setText(f"{nombre_completo} ({self.rol.upper()})")
 
         # Botón para activar el modo alto contraste
         self.btn_accesibilidad = QPushButton("👁️ Alto Contraste")
@@ -264,13 +284,16 @@ class MainWindow(QMainWindow):
         self.tablero_actual = self.task_manager.obtener_o_crear_tablero_inicial(self.usuario.id)
         
         if self.tablero_actual:
-            titulo = self.tablero_actual.get('titulo', 'Tablero')
-            self.HeaderTitle.setText(f"{titulo} ({self.rol.upper()})")
+
+            # titulo = self.tablero_actual.get('titulo', 'Tablero')
+            # YA NO ACTUALIZAMOS HeaderTitle con el título del tablero
+            # self.HeaderTitle.setText(f"{titulo} ({self.rol.upper()})")
             self.recargar_tablero_completo()
         else:
             # Si es Admin o Manager, no mostramos error, es normal no tener tablero personal
             if self.rol in ['admin', 'manager']:
-                 self.HeaderTitle.setText(f"Vista {self.rol.capitalize()} (Sin Tablero)")
+                 # self.HeaderTitle.setText(f"Vista {self.rol.capitalize()} (Sin Tablero)")
+                 pass
             else:
                 QMessageBox.critical(self, "Error", "No se pudo cargar ningún tablero.")
 
@@ -460,7 +483,7 @@ class MainWindow(QMainWindow):
             'id': id_tablero,
             'titulo': titulo_tablero
         }
-        self.HeaderTitle.setText(f"{titulo_tablero} (VISTA ADMIN)")
+        # self.HeaderTitle.setText(f"{titulo_tablero} (VISTA ADMIN)")
         
         # Forzamos la recarga de columnas y tareas de ESE tablero
         self.recargar_tablero_completo()
