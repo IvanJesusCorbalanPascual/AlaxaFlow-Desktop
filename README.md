@@ -15,8 +15,15 @@
 
 *(Aquí puedes añadir capturas de tu aplicación funcionando)*
 | Login | Tablero Kanban | Panel Admin |
-|:---:|:---:|:---:|
-| ![Login](assets/logoAlaxa.png) | *Vista del Tablero* | *Gestión de Usuarios* |
+| *Vista del Login* |
+| <img width="395" height="619" alt="image" src="https://github.com/user-attachments/assets/d97102a8-9cd3-4652-936a-13d575766474" />
+|:---:|
+| *Vista del Tablero* |
+| <img width="1919" height="1018" alt="image" src="https://github.com/user-attachments/assets/529c1c59-34f1-49cd-9da3-804fec596135" />
+|:---:|
+| *Vista del Panel de Control* |
+| <img width="995" height="730" alt="image" src="https://github.com/user-attachments/assets/acd1f7ca-0d7e-40f0-b367-e6dec3b2ec79" />
+
 
 ---
 
