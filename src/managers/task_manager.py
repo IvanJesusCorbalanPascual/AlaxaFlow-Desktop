@@ -20,41 +20,20 @@ class TaskManager:
 
     # --- GESTIÓN DE TABLEROS ---
     def obtener_o_crear_tablero_inicial(self, usuario_id):
-        # Busca si existe un tablero. Si no, crea uno por defecto con columnas.
         try:
-            # Si no hay cliente disponible, no intentamos llamar a la BD
-            if not db.client:
-                print("Sin conexión a la base de datos: no se pueden obtener tableros.")
-                return None
-
-            # Buscar tableros existentes en la bd
-            tableros = db.client.table('tableros').select("*").execute()
-
-            if tableros.data and len(tableros.data) > 0:
-                return tableros.data[0]
+            # 1. Buscar equipo del usuario en su perfil
+            perfil = db.client.table('perfiles').select('equipo_id').eq('id', usuario_id).single().execute()
             
-            # Si no hay, creamos uno por defecto
-            print("Creando tablero inicial...")
-            nuevo_tablero = db.client.table('tableros').insert({
-                "titulo": "Tablero General",
-                "creado_por": usuario_id
-            }).execute()
+            if perfil.data and perfil.data.get('equipo_id'):
+                eq_id = perfil.data['equipo_id']
+                # 2. Buscar si ese equipo tiene tablero asignado
+                tabs = db.client.table('tableros').select('*').eq('equipo_id', eq_id).execute()
+                if tabs.data: 
+                    return tabs.data[0]
             
-            tablero_id = nuevo_tablero.data[0]['id']
-            
-            # Creando las columnas básicas para el tablero (UUIDs automáticos)
-            columnas_defecto = [
-                {"titulo": "PENDIENTE", "orden": 1, "tablero_id": tablero_id},
-                {"titulo": "EN PROCESO", "orden": 2, "tablero_id": tablero_id},
-                {"titulo": "REVISIÓN", "orden": 3, "tablero_id": tablero_id},
-                {"titulo": "FINALIZADO", "orden": 4, "tablero_id": tablero_id}
-            ]
-            db.client.table('columnas').insert(columnas_defecto).execute()
-            
-            return nuevo_tablero.data[0] # Devolvemos el tablero creado
-            
+            return None
         except Exception as e:
-            print(f"Error gestionando tableros: {e}")
+            print(f"Error buscando tablero inicial: {e}")
             return None
 
     def obtener_columnas(self, tablero_id):
@@ -245,11 +224,14 @@ class TaskManager:
 
     # --- Gestion de usuarios y tableros por Admin ---
 
-    def obtener_todos_usuarios(self):
+    def obtener_todos_usuarios(self, filtro_dept_id=None):
         try:
-            # Ahora todo está en 'perfiles', mucho más fácil
-            res = db.client.table('perfiles').select('*').execute()
-            return res.data
+            query = db.client.table('perfiles').select('*')
+            
+            if filtro_dept_id:
+                query = query.eq('departamento_id', filtro_dept_id)
+                
+            return query.order('nombre').execute().data
         except Exception as e:
             print(f"Error listando usuarios: {e}")
             return []
@@ -277,7 +259,17 @@ class TaskManager:
 
     def eliminar_usuario(self, user_id):
         try:
-            # Borrado limpio
+            # 1. Desvincular de equipos (Líder o Manager)
+            # Esto evita el error de FK en equipos que ya tratamos en UI, pero es mas seguro aqui tambien
+            db.client.table('equipos').update({'lider_id': None}).eq('lider_id', user_id).execute()
+            db.client.table('equipos').update({'manager_id': None}).eq('manager_id', user_id).execute()
+            
+            # 2. Desvincular de tareas (Creado por / Asignado a)
+            # Intentamos poner a NULL. Si la BD no permite NULL, esto fallara, pero asumimos que si.
+            db.client.table('tareas').update({'creado_por': None}).eq('creado_por', user_id).execute()
+            db.client.table('tareas').update({'asignado_a': None}).eq('asignado_a', user_id).execute()
+            
+            # 3. Borrado limpio del perfil
             db.client.table('perfiles').delete().eq('id', user_id).execute()
             return True
         except Exception as e:
@@ -300,34 +292,36 @@ class TaskManager:
         except: return []
 
     # --- GESTIÓN DE TABLEROS (CRUD) ---
-    def obtener_todos_tableros(self):
+    def obtener_todos_tableros(self, filtro_dept_id=None):
         try:
-            if not db.client:
-                print("Sin conexión a la base de datos: no se pueden listar tableros.")
-                return []
-
-            # Traemos todos los tableros
-            response = db.client.table('tableros').select('*').execute()
-            return response.data
+            query = db.client.table('tableros').select('*')
+            
+            # Si nos pasan un departamento (Manager), filtramos
+            if filtro_dept_id:
+                query = query.eq('departamento_id', filtro_dept_id)
+                
+            return query.execute().data
         except Exception as e:
             print(f"Error listando tableros: {e}")
             return []
 
-    def crear_tablero_admin(self, titulo, descripcion, id_owner):
-        # Crear tablero asignado a un usuario específico (Lógica de Admin)
+    def crear_tablero_admin(self, titulo, descripcion, equipo_id):
         try:
-            if not db.client:
-                print("Sin conexión a la base de datos: no se puede crear tablero.")
-                return False
+            # 1. Obtener departamento del equipo seleccionado
+            eq_data = db.client.table('equipos').select('departamento_id').eq('id', equipo_id).single().execute()
+            dept_id = eq_data.data.get('departamento_id') if eq_data.data else None
+            
+            # 2. Crear tablero vinculado al equipo (SIN creado_por)
             data = {
                 "titulo": titulo, 
-                # "descripcion": descripcion, 
-                "creado_por": id_owner
+                "descripcion": descripcion, 
+                "equipo_id": equipo_id,
+                "departamento_id": dept_id
             }
             res = db.client.table('tableros').insert(data).execute()
             
+            # 3. Crear columnas por defecto
             if res.data:
-                # Crear columnas por defecto automáticamente
                 tid = res.data[0]['id']
                 cols = [
                     {"tablero_id": tid, "titulo": "PENDIENTE", "posicion": 1},
@@ -338,22 +332,29 @@ class TaskManager:
                 return True
             return False
         except Exception as e:
-            print(f"Error creando tablero admin: {e}")
+            print(f"Error creando tablero: {e}")
             return False
 
-    def editar_tablero(self, tablero_id, titulo, descripcion, owner_id):
+    def editar_tablero(self, tablero_id, titulo, descripcion, equipo_id):
         try:
+            # Si cambiamos el equipo, actualizamos el departamento automáticamente
+            dept_id = None
+            if equipo_id:
+                eq_data = db.client.table('equipos').select('departamento_id').eq('id', equipo_id).single().execute()
+                if eq_data.data: dept_id = eq_data.data.get('departamento_id')
+
             data = {
                 "titulo": titulo,
                 "descripcion": descripcion,
-                "creado_por": owner_id
+                "equipo_id": equipo_id,
+                "departamento_id": dept_id
             }
             db.client.table('tableros').update(data).eq('id', tablero_id).execute()
             return True
         except Exception as e:
             print(f"Error editando tablero: {e}")
             return False
-
+        
     def eliminar_tablero(self, tablero_id):
         try:
             # Primero borrar columnas y tareas (Cascada manual si no está en BD)

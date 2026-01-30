@@ -220,8 +220,12 @@ class AdminWindow(QMainWindow):
 
     # --- LÓGICA DE CARGA DE DATOS ---
     def cargar_usuarios(self):
-        usuarios = self.task_manager.obtener_todos_usuarios()
-
+        filtro = None
+        if self.usuario.nivel_acceso == 'manager':
+            filtro = self.usuario.departamento_id
+            
+        # 2. Pedir usuarios filtrados
+        usuarios = self.task_manager.obtener_todos_usuarios(filtro_dept_id=filtro)
         # Recupera los nombres de departamentos para mostrarlos sin IDs
         dept_map = {}
         try:
@@ -247,7 +251,19 @@ class AdminWindow(QMainWindow):
             self.table_users.setItem(row, 5, QTableWidgetItem(u.get('nivel_acceso', 'trabajador')))
 
     def cargar_tableros(self):
-        tableros = self.task_manager.obtener_todos_tableros()
+        filtro = None
+        if self.usuario.nivel_acceso == 'manager':
+            filtro = self.usuario.departamento_id
+            
+        tableros = self.task_manager.obtener_todos_tableros(filtro_dept_id=filtro)
+        
+        # Obtenemos equipos para traducir ID -> Nombre
+        equipos = self.task_manager.obtener_equipos()
+        equipos_map = {e['id']: e['nombre'] for e in equipos}
+
+        # Cambiamos cabecera de la columna 4 (índice 3)
+        self.table_boards.setHorizontalHeaderItem(3, QTableWidgetItem("Equipo Asignado"))
+
         self.table_boards.setRowCount(0)
         self.table_boards.setRowCount(len(tableros))
         
@@ -255,7 +271,11 @@ class AdminWindow(QMainWindow):
             self.table_boards.setItem(row, 0, QTableWidgetItem(str(t.get('id'))))
             self.table_boards.setItem(row, 1, QTableWidgetItem(t.get('titulo', '')))
             self.table_boards.setItem(row, 2, QTableWidgetItem(t.get('descripcion', '')))
-            self.table_boards.setItem(row, 3, QTableWidgetItem(str(t.get('creado_por'))))
+            
+            # Buscamos el nombre del equipo usando el ID
+            eq_id = t.get('equipo_id')
+            nombre_equipo = equipos_map.get(eq_id, "---")
+            self.table_boards.setItem(row, 3, QTableWidgetItem(nombre_equipo))
 
     # --- USUARIOS ---
 
@@ -302,20 +322,35 @@ class AdminWindow(QMainWindow):
         
         rol.addItems(roles_permitidos) 
 
+        lbl_dept = QLabel("Departamento:")
         combo_dept = QComboBox()
-        combo_dept.addItem("Seleccionar departamento...", None) 
+        lbl_equipo = QLabel("Equipo:")
         combo_equipo = QComboBox()
         combo_equipo.addItem("Seleccionar equipo...", None) 
 
         # Logica para cargar departamentos desde la BD
         try:
-            res = db.client.table('departamentos').select('id, nombre').execute()
+            res = db.client.table('departamentos').select('id, nombre')
+            if rol_actual =='manager':
+                res = res.eq('id', self.usuario.departamento_id)
+            res = res.execute()
             combo_dept.clear()
+
+            if rol_actual != 'manager': #Solo si es si no es manager
+                combo_dept.addItem("Seleccionar departamento...", None)
+
             if res.data:
                 for dep in res.data:
                     combo_dept.addItem(dep['nombre'], dep['id'])
-        except Exception as e:
-            pass
+            if rol_actual == 'manager':
+                # Seleccionamos el departamento automáticamente
+                idx = combo_dept.findData(self.usuario.departamento_id)
+                if idx >= 0: combo_dept.setCurrentIndex(idx)
+                
+                # Oculatmos los widgets de departamento
+                lbl_dept.hide()
+                combo_dept.hide()
+        except Exception: pass
 
         # Logica cargar equipos (se podria filtrar por departamento mas adelante si se desea)
         # Por simplicidad cargamos todos, podriamos implementar filtro dinamico en update_ui_state tambien
@@ -487,13 +522,54 @@ class AdminWindow(QMainWindow):
         id_user = self.table_users.item(row, 0).text()
         email_user = self.table_users.item(row, 3).text()
         
-        reply = QMessageBox.question(self, "Borrar", f"¿Estás seguro de eliminar a {email_user}?\nEsta acción es irreversible.", QMessageBox.Yes | QMessageBox.No)
+        # Check if user is a leader of any team
+        es_lider = False
+        nombre_equipo_liderado = ""
+        equipos_donde_es_lider = [] # Store IDs to unlink later
+        
+        try:
+            equipos = self.task_manager.obtener_equipos()
+            for eq in equipos:
+                # Compare as strings to be safe
+                if str(eq.get('lider_id')) == str(id_user):
+                    es_lider = True
+                    nombre_equipo_liderado = eq.get('nombre', 'un equipo')
+                    equipos_donde_es_lider.append(eq['id'])
+                    # We don't break, so we catch all teams if multiple
+        except Exception as e:
+            print(f"Error checking leadership: {e}")
+
+        if es_lider:
+             count = len(equipos_donde_es_lider)
+             if count > 1:
+                 msg = f"El usuario {email_user} es líder de {count} equipos.\nSi sigues, dejarás esos equipos sin líder.\n¿Seguro que quieres eliminarlo?"
+             else:
+                 msg = f"El usuario {email_user} es líder del equipo '{nombre_equipo_liderado}'.\nSi sigues, vas a dejar ese equipo sin líder.\n¿Seguro que quieres eliminarlo?"
+        else:
+             msg = f"¿Estás seguro de eliminar a {email_user}?\nEsta acción es irreversible."
+
+        reply = QMessageBox.question(self, "Confirmar Eliminación", msg, QMessageBox.Yes | QMessageBox.No)
+        
         if reply == QMessageBox.Yes:
+            # Fix FK Constraint: Unlink leader from teams explicitly
+            if es_lider and equipos_donde_es_lider:
+                try:
+                    for eq_id in equipos_donde_es_lider:
+                        # Set lider_id to NULL
+                        db.client.table('equipos').update({'lider_id': None}).eq('id', eq_id).execute()
+                except Exception as e:
+                    print(f"Error unlinking leader: {e}")
+                    QMessageBox.critical(self, "Error", f"Error al desvincular equipos: {e}")
+                    return
+
             if self.task_manager.eliminar_usuario(id_user):
                 self.cargar_usuarios()
+                # Also refresh teams table if exists, as it might update "Lider" column to "Sin Líder"
+                if hasattr(self, 'cargar_equipos'):
+                    self.cargar_equipos()
                 QMessageBox.information(self, "Eliminado", "Usuario eliminado correctamente.")
             else:
-                QMessageBox.critical(self, "Error", "No se pudo eliminar el usuario.")
+                QMessageBox.critical(self, "Error", "No se pudo eliminar el usuario (posible error de BD).")
 
     # Doble clic para editar los datos del usuario
     def abrir_detalle_usuario(self, item):
@@ -519,13 +595,22 @@ class AdminWindow(QMainWindow):
         
         # Rol
         rol_combo = QComboBox()
-        rol_combo.addItems(["trabajador", "lider_equipo", "manager", "admin"])
+        if self.usuario.nivel_acceso == 'admin':
+            rol_combo.addItems(["trabajador", "lider_equipo", "manager", "admin"])
+        elif self.usuario.nivel_acceso == 'manager':
+            rol_combo.addItems(["trabajador", "lider_equipo"])
         rol_combo.setCurrentText(data.get('nivel_acceso', 'trabajador'))
         
         # Departamentos
+        lbl_dept = QLabel("Departamento:")
         dept_combo = QComboBox()
         dept_combo.addItem("Sin Departamento", None)
         depts = self.task_manager.obtener_departamentos()
+
+        if self.usuario.nivel_acceso == 'manager':
+            # Solo dejo mi propio departamento en la lista
+            depts = [d for d in depts if str(d['id']) == str(self.usuario.departamento_id)]
+
         idx_d = 0
         for i, d in enumerate(depts):
             dept_combo.addItem(d['nombre'], d['id'])
@@ -534,16 +619,13 @@ class AdminWindow(QMainWindow):
         dept_combo.setCurrentIndex(idx_d)
 
         # Equipos (Carga simple para edición)
+        lbl_equipo = QLabel("Equipo:")
         equipo_combo = QComboBox()
         equipo_combo.addItem("Sin Equipo", None)
         equipos = self.task_manager.obtener_equipos()
         
         # Intentar buscar el equipo actual del usuario (tabla trabajadores)
-        equipo_actual_id = None
-        try:
-            res_trab = db.client.table('trabajadores').select('equipo_id').eq('id', id_user).single().execute()
-            if res_trab.data: equipo_actual_id = res_trab.data.get('equipo_id')
-        except: pass
+        equipo_actual_id = data.get('equipo_id')
 
         idx_e = 0
         for i, e in enumerate(equipos):
@@ -555,8 +637,34 @@ class AdminWindow(QMainWindow):
         layout.addRow("Nombre:", nombre)
         layout.addRow("Apellidos:", apellidos)
         layout.addRow("Rol:", rol_combo)
-        layout.addRow("Departamento:", dept_combo)
-        layout.addRow("Equipo:", equipo_combo)
+        layout.addRow(lbl_dept, dept_combo)
+        layout.addRow(lbl_equipo, equipo_combo)
+
+        # --- Lógica de visibilidad dinámica ---
+        def update_edit_ui_state():
+            r = rol_combo.currentText()
+            # Admin: No dept, no team
+            # Manager: Dept, no team
+            # Lider/Trabajador: Dept, Team
+            
+            if r == 'admin':
+                lbl_dept.hide()
+                dept_combo.hide()
+                lbl_equipo.hide()
+                equipo_combo.hide()
+            elif r == 'manager':
+                lbl_dept.show()
+                dept_combo.show()
+                lbl_equipo.hide()
+                equipo_combo.hide()
+            else:
+                lbl_dept.show()
+                dept_combo.show()
+                lbl_equipo.show()
+                equipo_combo.show()
+        
+        rol_combo.currentIndexChanged.connect(update_edit_ui_state)
+        update_edit_ui_state() # Estado inicial
         
         btn_save = QPushButton("Guardar Cambios")
         btn_save.clicked.connect(dialog.accept)
@@ -580,37 +688,45 @@ class AdminWindow(QMainWindow):
 
     # Dialogo para crear un tablero con su nombre y descripcion, y asignarlo a un usuario
     def crear_tablero_dialog(self): 
-        usuarios = self.task_manager.obtener_todos_usuarios()
-        if not usuarios: return
+        equipos = self.task_manager.obtener_equipos()
+        
+        if self.usuario.nivel_acceso == 'manager':
+            equipos = [e for e in equipos if str(e.get('departamento_id')) == str(self.usuario.departamento_id)]
+
+        if not equipos:
+            QMessageBox.warning(self, "Aviso", "No hay equipos disponibles. Crea un equipo primero.")
+            return
 
         dialog = QDialog(self)
-        dialog.setWindowTitle("Nuevo Tablero")
+        dialog.setWindowTitle("Nuevo Tablero de Equipo")
         self.aplicar_estilo(dialog)
         layout = QFormLayout(dialog)
         
         titulo = QLineEdit()
         desc = QLineEdit()
-        combo_owner = QComboBox()
+        combo_equipo = QComboBox()
         
-        for u in usuarios:
-            combo_owner.addItem(f"{u['email']} ({u['nombre']})", u['id'])
+        for e in equipos:
+            combo_equipo.addItem(e['nombre'], e['id'])
             
         layout.addRow("Título:", titulo)
         layout.addRow("Descripción:", desc)
-        layout.addRow("Asignar a:", combo_owner)
+        layout.addRow("Asignar al Equipo:", combo_equipo)
         
         btn = QPushButton("Crear Tablero")
-        btn.setObjectName("btn_crear_tablero")
         btn.clicked.connect(dialog.accept)
         layout.addRow(btn)
         
         if dialog.exec_():
-            owner_id = combo_owner.currentData()
-            if self.task_manager.crear_tablero_admin(titulo.text(), desc.text(), owner_id):
-                 QMessageBox.information(self, "Éxito", "Tablero creado.")
+            if not titulo.text(): return
+            equipo_id = combo_equipo.currentData()
+            
+            # Llamamos a crear SIN pasar usuario (ya no existe creado_por)
+            if self.task_manager.crear_tablero_admin(titulo.text(), desc.text(), equipo_id):
+                 QMessageBox.information(self, "Éxito", "Tablero creado correctamente.")
                  self.cargar_tableros()
             else:
-                QMessageBox.critical(self, "Error", "Fallo al crear tablero.")
+                QMessageBox.critical(self, "Error", "No se pudo crear el tablero.")
 
     # --- IMPLEMENTACIÓN DE PESTAÑAS EXTRA (Departamentos y Equipos) ---
     def setup_extra_tabs(self):
@@ -738,50 +854,47 @@ class AdminWindow(QMainWindow):
         row = item.row()
         id_tablero = self.table_boards.item(row, 0).text()
         
-        # Recuperar datos
         try:
             res = db.client.table('tableros').select('*').eq('id', id_tablero).single().execute()
             data = res.data
         except: return
 
         dialog = QDialog(self)
-        dialog.setWindowTitle(f"Editar Tablero: {data.get('titulo')}")
+        dialog.setWindowTitle(f"Editar: {data.get('titulo')}")
         self.aplicar_estilo(dialog)
         layout = QFormLayout(dialog)
         
         titulo = QLineEdit(data.get('titulo', ''))
         desc = QLineEdit(data.get('descripcion', ''))
         
-        # Combo Dueño (Owner)
-        combo_owner = QComboBox()
-        usuarios = self.task_manager.obtener_todos_usuarios()
+        combo_equipo = QComboBox()
+        equipos = self.task_manager.obtener_equipos()
         
-        idx_u = 0
-        for i, u in enumerate(usuarios):
-            combo_owner.addItem(f"{u['email']} ({u['nombre']})", u['id'])
-            if str(u['id']) == str(data.get('creado_por')):
-                idx_u = i
-        combo_owner.setCurrentIndex(idx_u)
+        if self.usuario.nivel_acceso == 'manager':
+             equipos = [e for e in equipos if str(e.get('departamento_id')) == str(self.usuario.departamento_id)]
+
+        idx_eq = 0
+        current_eq = data.get('equipo_id')
+        for i, e in enumerate(equipos):
+            combo_equipo.addItem(e['nombre'], e['id'])
+            if str(e['id']) == str(current_eq):
+                idx_eq = i
+        combo_equipo.setCurrentIndex(idx_eq)
         
         layout.addRow("Título:", titulo)
         layout.addRow("Descripción:", desc)
-        layout.addRow("Asignar a (Owner):", combo_owner)
+        layout.addRow("Equipo:", combo_equipo)
         
         btn = QPushButton("Guardar Cambios")
         btn.clicked.connect(dialog.accept)
         layout.addRow(btn)
         
         if dialog.exec_():
-            if self.task_manager.editar_tablero(
-                id_tablero,
-                titulo.text(),
-                desc.text(),
-                combo_owner.currentData()
-            ):
+            if self.task_manager.editar_tablero(id_tablero, titulo.text(), desc.text(), combo_equipo.currentData()):
                 self.cargar_tableros()
                 QMessageBox.information(self, "Éxito", "Tablero actualizado.")
             else:
-                QMessageBox.critical(self, "Error", "Fallo al actualizar tablero.")
+                QMessageBox.critical(self, "Error", "Fallo al actualizar.")
 
     # --- LOGICA DEPARTAMENTOS ---
     def cargar_departamentos(self):
@@ -1012,6 +1125,10 @@ class AdminWindow(QMainWindow):
     # --- LOGICA EQUIPOS ---
     def cargar_equipos(self):
         data = self.task_manager.obtener_equipos()
+
+        if self.usuario.nivel_acceso == 'manager': # Filtrar por departamento
+            data = [eq for eq in data if str(eq.get('departamento_id')) == str(self.usuario.departamento_id)]
+
         # Necesitamos mapa de departamentos para mostrar nombres
         depts = self.task_manager.obtener_departamentos()
         dept_map = {d['id']: d['nombre'] for d in depts}
@@ -1044,25 +1161,28 @@ class AdminWindow(QMainWindow):
         self.aplicar_estilo(dialog)
         layout = QFormLayout(dialog)
         
-        nombre = QLineEdit()
-        desc = QLineEdit()
-        
-        combo_d = QComboBox()
-        depts = self.task_manager.obtener_departamentos()
-        for d in depts:
-            combo_d.addItem(d['nombre'], d['id'])
-            
-        combo_l = QComboBox()
-        # Se cargara dinamicamente al cambiar de departamento
-        
-        combo_m = QComboBox()
-        
         # Logica: si soy admin, elijo manager. Si soy manager, me asigno yo.
         rol_actual = 'trabajador'
         if self.parent_window and hasattr(self.parent_window, 'rol'):
             rol_actual = self.parent_window.rol
         elif self.usuario and hasattr(self.usuario, 'nivel_acceso'):
             rol_actual = self.usuario.nivel_acceso
+
+        nombre = QLineEdit()
+        desc = QLineEdit()
+        combo_d = QComboBox()
+
+        depts = self.task_manager.obtener_departamentos()
+
+        if rol_actual == 'manager':
+            depts = [d for d in depts if str(d['id']) == str(self.usuario.departamento_id)]
+
+        for d in depts:
+            combo_d.addItem(d['nombre'], d['id'])
+            
+        combo_l = QComboBox()
+        # Se cargara dinamicamente al cambiar de departamento
+        combo_m = QComboBox()
             
         users = self.task_manager.obtener_todos_usuarios()
         
@@ -1171,6 +1291,10 @@ class AdminWindow(QMainWindow):
         
         combo_d = QComboBox()
         depts = self.task_manager.obtener_departamentos()
+
+        if self.usuario.nivel_acceso == 'manager':
+            depts = [d for d in depts if str(d['id']) == str(self.usuario.departamento_id)]
+
         idx_d = 0
         current_dept_id = eq_data.get('departamento_id')
         for i, d in enumerate(depts):

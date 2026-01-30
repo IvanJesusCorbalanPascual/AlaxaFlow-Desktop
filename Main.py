@@ -1,4 +1,5 @@
 import sys, os
+import ctypes
 from PyQt5.QtWidgets import QApplication, QDialog
 from PyQt5.QtGui import QIcon
 from src.views.main_window import MainWindow, ESTILO_NORMAL
@@ -6,6 +7,13 @@ from src.views.login_window import LoginDialog
 from src.managers.auth_manager import AuthManager
         
 if __name__ == "__main__":
+    # Para que Windows muestre el icono 'Alaxa' en la barra de tareas
+    try:
+        myappid = 'alaxa.flow.desktop.v1'
+        ctypes.windll.shell32.SetCurrentProcessExplicitAppUserModelID(myappid)
+    except ImportError:
+        pass
+
     ruta_base = os.path.dirname(os.path.abspath(__file__))
     ruta_icono = os.path.join(ruta_base, "assets", "logoAlaxa.png")
 

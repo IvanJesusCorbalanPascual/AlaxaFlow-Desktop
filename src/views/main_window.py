@@ -9,20 +9,17 @@ from src.views.admin_panel import AdminWindow
 
 # Estilo "Alaxa Brown"
 ESTILO_NORMAL = """
-/* 1. CONTENEDORES PRINCIPALES (Solo lo que necesitamos pintar) */
 QMainWindow, QDialog { 
     background-color: #FAFAFA; 
     color: #3E2723;
 }
 
-/* 2. TEXTOS Y FUENTES (Aquí sí usamos QWidget solo para la letra) */
 QWidget { 
     font-family: 'Segoe UI', sans-serif; 
     font-size: 14px; 
     color: #3E2723; 
 }
 
-/* 3. INPUTS Y ETIQUETAS ESPECÍFICOS */
 QLineEdit { 
     background-color: #FFFFFF; 
     border: 2px solid #D7CCC8; 
@@ -35,23 +32,17 @@ QLabel {
     background: transparent;
 }
 
-/* 4. HEADER */
 QFrame#TopBar { background-color: #4E342E; border-bottom: 3px solid #FFB74D; }
 QLabel#HeaderTitle { color: #FFFFFF; font-weight: bold; font-size: 20px; }
-
-/* 5. COLUMNAS */
-/* Nota: El tamaño y forma están en widgets.py, aquí solo reforzamos el color */
 QFrame#Columna { 
     background-color: #EFF1F3; 
     border: 1px solid #D7CCC8; 
 }
 QLabel#TituloColumna { font-weight: bold; font-size: 16px; color: #4E342E; padding: 5px; }
 
-/* 6. TARJETAS */
 QFrame[class="tarjeta"] { background-color: #FFFFFF; color: #3E2723; border: 1px solid #E0E0E0; border-radius: 6px; }
 QFrame[class="tarjeta"]:hover { background-color: #FFF8E1; border: 1px solid #FFB74D; }
 
-/* 7. BOTONES */
 QPushButton { border-radius: 4px; padding: 6px 15px; }
 QPushButton:hover { background-color: #D7CCC8; }
 
@@ -65,7 +56,6 @@ QPushButton#btn_add_card:hover { background-color: #D7CCC8; color: #3E2723; }
 """
 
 ESTILO_CONTRASTE = """
-/* 1. CONFIGURACIÓN GLOBAL ALTO CONTRASTE */
 QMainWindow, QDialog { 
     background-color: #000000; 
     color: #FFFF00; 
@@ -77,12 +67,9 @@ QWidget {
     color: #FFFF00;
 }
 
-/* 2. HEADER Y TÍTULOS */
 QFrame#TopBar { background-color: #000000; border-bottom: 4px solid #FFFF00; }
 QLabel#HeaderTitle { color: #FFFF00; font-size: 22px; text-decoration: underline; }
 QLabel#TituloColumna { color: #FFFFFF; font-size: 18px; border-bottom: 2px solid #333; }
-
-/* 3. BOTONES DEL HEADER */
 QPushButton#btn_accesibilidad, QPushButton#btn_add_column, QPushButton#btn_admin_panel {
     background-color: #000000; 
     color: #FFFF00; 
@@ -95,7 +82,6 @@ QPushButton#btn_accesibilidad:hover, QPushButton#btn_add_column:hover, QPushButt
     background-color: #333333;
 }
 
-/* 4. ELEMENTOS DE LA UI GENERAL */
 QFrame[class="tarjeta"] { background-color: #000000; color: #FFFF00; border: 2px solid #FFFF00; border-radius: 0px; margin-bottom: 10px; }
 QFrame[class="tarjeta"]:hover { border: 2px dashed #FFFFFF; }
 
@@ -103,23 +89,17 @@ QLineEdit { background-color: #000000; color: #FFFF00; border: 2px solid #FFFF00
 QPushButton { background-color: #000000; color: #FFFF00; border: 2px solid #FFFF00; padding: 8px 15px; border-radius: 0px; }
 QPushButton:hover { background-color: #333333; color: #FFFFFF; border-color: #FFFFFF; }
 
-/* Botones específicos */
 QPushButton#btn_accesibilidad { background-color: #FFFF00; color: #000000; border: 2px solid #FFFFFF; min-height: 20px; padding: 8px 15px; margin-right: 5px; }
 QPushButton#btn_add_card { color: #FFFF00; border: 2px dashed #FFFF00; text-align: center; margin-top: 5px; }
 
-/* 5. ARREGLO DEFINITIVO DE SCROLLS Y CONTENEDORES */
-/* Esto asegura que el fondo sea negro y sin bordes feos */
 QScrollArea, QScrollArea > QWidget > QWidget {
     background-color: black;
     border: none;
 }
 
-/* IMPORTANTE: Damos espacio al contenedor de columnas para que no se corte el borde izquierdo */
 QWidget#ContenedorColumnas {
     background-color: transparent;
 }
-
-/* Barras de Scroll */
 QScrollBar:horizontal { height: 0px; background: transparent; }
 QScrollBar:vertical { border: 1px solid #FFFF00; background: #000000; width: 12px; margin: 0px; }
 QScrollBar::handle:vertical { background: #FFFF00; min-height: 20px; }
@@ -288,7 +268,11 @@ class MainWindow(QMainWindow):
             self.HeaderTitle.setText(f"{titulo} ({self.rol.upper()})")
             self.recargar_tablero_completo()
         else:
-            QMessageBox.critical(self, "Error", "No se pudo cargar ningún tablero.")
+            # Si es Admin o Manager, no mostramos error, es normal no tener tablero personal
+            if self.rol in ['admin', 'manager']:
+                 self.HeaderTitle.setText(f"Vista {self.rol.capitalize()} (Sin Tablero)")
+            else:
+                QMessageBox.critical(self, "Error", "No se pudo cargar ningún tablero.")
 
     def recargar_tablero_completo(self):
         if self.tablero_actual:
