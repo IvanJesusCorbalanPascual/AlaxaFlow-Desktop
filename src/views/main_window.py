@@ -53,6 +53,21 @@ QPushButton#btn_accesibilidad { background-color: #FFB74D; color: #3E2723; font-
 
 QPushButton#btn_add_card { background-color: transparent; border: none; color: #5D4037; text-align: left; padding: 8px; }
 QPushButton#btn_add_card:hover { background-color: #D7CCC8; color: #3E2723; }
+
+QMenu {
+    background-color: #FFFFFF; 
+    border: 1px solid #D7CCC8; 
+    padding: 5px;
+}
+QMenu::item {
+    padding: 6px 20px;
+    color: #3E2723; 
+    background-color: transparent;
+}
+QMenu::item:selected {
+    background-color: #FFB74D; 
+    color: #3E2723;
+}
 """
 
 ESTILO_CONTRASTE = """
@@ -104,6 +119,25 @@ QScrollBar:horizontal { height: 0px; background: transparent; }
 QScrollBar:vertical { border: 1px solid #FFFF00; background: #000000; width: 12px; margin: 0px; }
 QScrollBar::handle:vertical { background: #FFFF00; min-height: 20px; }
 QScrollBar::add-line:vertical, QScrollBar::sub-line:vertical { background: none; height: 0px; }
+
+QMenu {
+    background-color: #000000;
+    border: 2px solid #FFFF00;
+}
+QMenu::item {
+    padding: 6px 20px;
+    color: #FFFF00;
+    background-color: transparent;
+}
+QMenu::item:selected {
+    background-color: #FFFF00;
+    color: #000000;
+}
+
+QPushButton#btn_add_column {
+        padding: 8px 15px;  
+        min-height: 20px;  
+    }
 """
 
 """
@@ -174,9 +208,9 @@ class MainWindow(QMainWindow):
         self.btn_add_column = QPushButton("➕ Añadir Columna")
         self.btn_add_column.setCursor(Qt.PointingHandCursor)
         self.btn_add_column.setObjectName("btn_add_column")
-        self.btn_add_column.setStyleSheet("QPushButton#btn_add_column { background-color: transparent; color: #FFFFFF; border: 1px solid #D7CCC8; padding: 6px; border-radius: 4px; }")
+        self.btn_add_column.setStyleSheet("QPushButton#btn_add_column { background-color: transparent; color: #FFB74D; font-weight: bold; border: 2px solid #FFB74D; padding: 6px; border-radius: 4px; }")
         
-        # LOGICA NUEVA: Solo permitimos añadir columna si NO es trabajador
+        # Solo permitimos añadir columna si NO es trabajador
         if self.rol != 'trabajador':
             self.btn_add_column.clicked.connect(self.agregar_columna)
             # Lo colocamos junto al botón de accesibilidad (index 6)
@@ -264,7 +298,7 @@ class MainWindow(QMainWindow):
             self.tema_actual = "normal"
             self.btn_accesibilidad.setText("👁️ Alto Contraste")
 
-            self.btn_add_column.setStyleSheet("QPushButton#btn_add_column { background-color: transparent; color: #FFFFFF; border: 1px solid #D7CCC8; padding: 6px; border-radius: 4px; }")
+            self.btn_add_column.setStyleSheet("QPushButton#btn_add_column { background-color: transparent; color: #FFB74D; font-weight: bold; border: 2px solid #FFB74D; padding: 6px; border-radius: 4px; }")
             
         # Actualiza el estilo de las tarjetas, recorriendo las columnas y layouts
         if hasattr(self, 'cols_widgets'):
