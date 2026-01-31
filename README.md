@@ -13,8 +13,8 @@
 
 ## 📸 Capturas de Pantalla
 
-*(Aquí puedes añadir capturas de tu aplicación funcionando)*
 | Login | Tablero Kanban | Panel Admin |
+
 | *Vista del Login* |
 | <img width="395" height="619" alt="image" src="https://github.com/user-attachments/assets/d97102a8-9cd3-4652-936a-13d575766474" />
 |:---:|
